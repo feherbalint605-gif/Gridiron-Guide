@@ -39,6 +39,7 @@
 
   --font-display: 'Oxanium', display;
   --font-body: 'Inter', sans-serif;
+  --font-sans: 'Inter', sans-serif;
 }
 
 @layer base {

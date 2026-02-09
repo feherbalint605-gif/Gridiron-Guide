@@ -68,30 +68,33 @@ export default function Home() {
               <span>Elite Training System</span>
             </div>
             
-            <h1 className="text-5xl md:text-7xl font-display font-black text-transparent bg-clip-text bg-gradient-to-br from-white via-white to-gray-500 mb-6 drop-shadow-lg">
-              SELECT YOUR <br />
-              <span className="text-glow text-primary">POSITION</span>
+            <h1 className="text-6xl md:text-8xl font-display font-black text-transparent bg-clip-text bg-gradient-to-br from-white via-white to-gray-500 mb-6 drop-shadow-2xl tracking-tighter">
+              GRIDIRON <br />
+              <span className="text-glow text-primary italic">TRAINING</span>
             </h1>
             
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto font-light mb-12">
-              Access professional-grade workout routines and nutrition plans tailored specifically 
-              for your role on the field. Dominate your position.
+            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto font-light mb-16 tracking-wide">
+              ELITE ATHLETIC PERFORMANCE PROTOCOLS. <br/>
+              DESIGNED FOR THE NEXT GENERATION OF BALLERS.
             </p>
 
-            <div className="max-w-md mx-auto space-y-4">
-              <label className="text-sm font-mono text-primary uppercase tracking-tighter">Choose your position:</label>
-              <Select onValueChange={(value) => setLocation(`/position/${value}`)}>
-                <SelectTrigger className="w-full bg-card border-primary/20 text-foreground h-12 text-lg focus:ring-primary/50">
-                  <SelectValue placeholder="Select from list..." />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-primary/20 text-foreground">
-                  {positions?.map((pos) => (
-                    <SelectItem key={pos.id} value={pos.id} className="focus:bg-primary/20 focus:text-primary">
-                      {pos.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="max-w-md mx-auto space-y-6 relative group">
+              <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-accent/20 rounded-lg blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+              <div className="relative">
+                <label className="block text-[10px] font-mono text-primary uppercase tracking-[0.3em] mb-3 opacity-80">System Access / Select Role</label>
+                <Select onValueChange={(value) => setLocation(`/position/${value}`)}>
+                  <SelectTrigger className="w-full bg-black/50 backdrop-blur-xl border-primary/30 text-foreground h-14 text-xl focus:ring-primary/50 rounded-none border-t-0 border-x-0 border-b-2 transition-all hover:border-primary">
+                    <SelectValue placeholder="CHOOSE POSITION" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-black/90 backdrop-blur-2xl border-primary/20 text-foreground rounded-none">
+                    {positions?.map((pos) => (
+                      <SelectItem key={pos.id} value={pos.id} className="focus:bg-primary focus:text-black py-3 text-lg font-display uppercase tracking-wider cursor-pointer">
+                        {pos.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </motion.div>
         </div>
