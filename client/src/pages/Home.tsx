@@ -1,11 +1,19 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { usePositions } from "@/hooks/use-positions";
 import { NeonCard } from "@/components/NeonCard";
 import { motion } from "framer-motion";
-import { Trophy, ChevronRight } from "lucide-react";
+import { Trophy, ChevronRight, Search } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function Home() {
   const { data: positions, isLoading, error } = usePositions();
+  const [, setLocation] = useLocation();
 
   if (isLoading) {
     return (
@@ -65,16 +73,38 @@ export default function Home() {
               <span className="text-glow text-primary">POSITION</span>
             </h1>
             
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto font-light">
+            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto font-light mb-12">
               Access professional-grade workout routines and nutrition plans tailored specifically 
               for your role on the field. Dominate your position.
             </p>
+
+            <div className="max-w-md mx-auto space-y-4">
+              <label className="text-sm font-mono text-primary uppercase tracking-tighter">Choose your position:</label>
+              <Select onValueChange={(value) => setLocation(`/position/${value}`)}>
+                <SelectTrigger className="w-full bg-card border-primary/20 text-foreground h-12 text-lg focus:ring-primary/50">
+                  <SelectValue placeholder="Select from list..." />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-primary/20 text-foreground">
+                  {positions?.map((pos) => (
+                    <SelectItem key={pos.id} value={pos.id} className="focus:bg-primary/20 focus:text-primary">
+                      {pos.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </motion.div>
         </div>
       </section>
 
       {/* Grid Section */}
-      <section className="container mx-auto max-w-6xl px-4">
+      <section className="container mx-auto max-w-6xl px-4 mt-12">
+        <div className="flex items-center gap-2 mb-8 px-2">
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent to-border" />
+          <span className="text-xs font-mono text-muted-foreground uppercase tracking-widest px-4">OR EXPLORE ALL</span>
+          <div className="h-px flex-1 bg-gradient-to-l from-transparent to-border" />
+        </div>
+        
         <motion.div 
           variants={container}
           initial="hidden"
