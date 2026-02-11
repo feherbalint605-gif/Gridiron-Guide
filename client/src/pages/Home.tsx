@@ -99,49 +99,6 @@ export default function Home() {
           </motion.div>
         </div>
       </section>
-
-      {/* Grid Section */}
-      <section className="container mx-auto max-w-6xl px-4 mt-12">
-        <div className="flex items-center gap-2 mb-8 px-2">
-          <div className="h-px flex-1 bg-gradient-to-r from-transparent to-border" />
-          <span className="text-xs font-mono text-muted-foreground uppercase tracking-widest px-4">OR EXPLORE ALL</span>
-          <div className="h-px flex-1 bg-gradient-to-l from-transparent to-border" />
-        </div>
-        
-        <motion.div 
-          variants={container}
-          initial="hidden"
-          animate="show"
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-        >
-          {positions?.map((pos) => (
-            <motion.div key={pos.id} variants={item}>
-              <Link href={`/position/${pos.id}`} className="block h-full group">
-                <NeonCard className="h-full flex flex-col justify-between group-hover:bg-card/80">
-                  <div>
-                    <div className="flex justify-between items-start mb-4">
-                      <h2 className="text-3xl font-display font-bold text-foreground group-hover:text-primary transition-colors">
-                        {pos.name}
-                      </h2>
-                      <div className="p-2 rounded-full bg-background border border-border group-hover:border-primary group-hover:bg-primary/10 transition-colors">
-                        <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary" />
-                      </div>
-                    </div>
-                    <p className="text-muted-foreground leading-relaxed">
-                      {pos.description}
-                    </p>
-                  </div>
-                  
-                  <div className="mt-6 pt-4 border-t border-border/50 flex items-center justify-between text-sm font-mono text-primary/80">
-                    <span>VIEW PROTOCOLS</span>
-                    <span className="opacity-0 group-hover:opacity-100 transition-opacity">→</span>
-                  </div>
-                </NeonCard>
-              </Link>
-            </motion.div>
-          ))}
-        </motion.div>
-      </section>
     </div>
   );
 }
