@@ -91,10 +91,10 @@ const DETAILS: Record<string, PositionDetails> = {
     },
     diet: {
       meals: [
-        { meal: "Breakfast", items: ["Whole grain toast", "Avocado", "3 Eggs"] },
-        { meal: "Lunch", items: ["Turkey Wrap", "Quinoa Salad", "Apple"] },
-        { meal: "Dinner", items: ["Chicken Thighs", "Pasta (Carb load)", "Green Beans"] },
-        { meal: "Snacks", items: ["Fruit Smoothie", "Beef Jerky"] }
+        { meal: "REGGELI (olcsó, gyors, izomépítő)", items: ["Zabkása (zab + tej/víz) + banán + 1 kanál mogyoróvaj", "4 tojás rántotta + teljes kiőrlésű pirítós + spenót", "Görög joghurt (nagy dobozos, store brand) + zab + fagyasztott gyümölcs", "Tojásos tortilla wrap (tojás + spenót + kis sajt)", "Overnight oats (zab + tej + chia mag + banán)", "Cottage cheese + alma + méz", "Protein smoothie (tej + zab + banán + mogyoróvaj)"] },
+        { meal: "EBÉD (tömegelés, regeneráció, de nem drága)", items: ["Grillezett csirkemell + rizs + fagyasztott brokkoli", "Darált pulyka vagy marha + rizs + zöldség", "Csirkés tészta (teljes kiőrlésű tészta + paradicsomszósz)", "Burrito bowl (rizs + bab + csirke + kukorica)", "Tonhal konzerv + rizs + saláta", "Édesburgonya + tojás + spenót", "Lencse + rizs + csirke (nagyon olcsó és brutál jó)"] },
+        { meal: "VACSORA (könnyebb, de fehérjedús)", items: ["Csirke + párolt zöldség", "Tojásos omlett spenóttal", "Darált hús + saláta", "Cottage cheese + dió", "Tonhal + tojás + zöldség", "Csirke + rizs kisebb adagban", "Fehérjeturmix + banán (ha későn edzettél)"] },
+        { meal: "Tippek", items: ["Olcsó alapok: zab, tojás, banán, spenót, joghurt nagy kiszerelésben", "Főzz nagy adag rizst 3–4 napra, sokat spórolsz."] }
       ],
       proteinTarget: "1.6g - 1.8g per kg of bodyweight"
     }
