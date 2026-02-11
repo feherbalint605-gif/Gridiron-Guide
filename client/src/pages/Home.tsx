@@ -2,7 +2,18 @@ import { Link, useLocation } from "wouter";
 import { usePositions } from "@/hooks/use-positions";
 import { NeonCard } from "@/components/NeonCard";
 import { motion } from "framer-motion";
-import { Trophy, ChevronRight, Search } from "lucide-react";
+import { 
+  Trophy, 
+  ChevronRight, 
+  Search,
+  Target,
+  Zap,
+  Shield,
+  BicepsFlexed,
+  Sword,
+  ShieldAlert,
+  FastForward
+} from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -10,6 +21,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+const positionIcons: Record<string, any> = {
+  qb: Target,
+  wr: Zap,
+  rb: FastForward,
+  lb: ShieldAlert,
+  db: Shield,
+  ol: Sword,
+  dl: BicepsFlexed
+};
 
 export default function Home() {
   const { data: positions, isLoading, error } = usePositions();
@@ -87,11 +108,17 @@ export default function Home() {
                     <SelectValue placeholder="CHOOSE POSITION" />
                   </SelectTrigger>
                   <SelectContent className="bg-black/90 backdrop-blur-2xl border-primary/20 text-foreground rounded-none">
-                    {positions?.map((pos) => (
-                      <SelectItem key={pos.id} value={pos.id} className="focus:bg-primary focus:text-black py-3 text-lg font-display uppercase tracking-wider cursor-pointer">
-                        {pos.name}
-                      </SelectItem>
-                    ))}
+                    {positions?.map((pos) => {
+                      const Icon = positionIcons[pos.id] || Trophy;
+                      return (
+                        <SelectItem key={pos.id} value={pos.id} className="focus:bg-primary focus:text-black py-3 text-lg font-display uppercase tracking-wider cursor-pointer">
+                          <div className="flex items-center gap-3">
+                            <Icon className="w-5 h-5" />
+                            {pos.name}
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
