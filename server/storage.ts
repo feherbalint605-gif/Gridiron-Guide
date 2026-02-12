@@ -90,6 +90,16 @@ const DETAILS: Record<string, PositionDetails> = {
         },
         {
           type: "strength",
+          title: "Wednesday – Athletic 1",
+          exercises: [
+            { name: "Weighted Box Jump", sets: "4", reps: "3", notes: "tipp: full recovery; tipp: stick the landing" },
+            { name: "Side Hurdle to Box Jump (Single Leg)", sets: "4", reps: "3 each leg", notes: "tipp: minimal ground contact; tipp: stay elastic" },
+            { name: "Bulgarian Split Stance 3-Point Jumps (left/right/center)", sets: "4", reps: "4", notes: "tipp: project forward" },
+            { name: "Nordic Hamstring", sets: "3", reps: "5", notes: "tipp: slow lowering; tipp: control hips" }
+          ]
+        },
+        {
+          type: "strength",
           title: "Thursday – Lower Body 2",
           exercises: [
             { name: "Back Squat", sets: "4", reps: "6", notes: "tipp: drive through mid-foot; tipp: explosive concentric" },
@@ -107,21 +117,9 @@ const DETAILS: Record<string, PositionDetails> = {
             { name: "Barbell or Dumbbell Curls", sets: "4", reps: "8–6", notes: "tipp: strict reps; tipp: full extension" },
             { name: "Shoulder Prehab (rotator cuff / face pulls)", sets: "4", reps: "High reps", notes: "tipp: perfect posture" }
           ]
-        }
-      ],
-      field: [
-        {
-          type: "agility",
-          title: "Wednesday – Athletic 1",
-          exercises: [
-            { name: "Weighted Box Jump", sets: "4", reps: "3", notes: "tipp: full recovery; tipp: stick the landing" },
-            { name: "Side Hurdle to Box Jump (Single Leg)", sets: "4", reps: "3 each leg", notes: "tipp: minimal ground contact; tipp: stay elastic" },
-            { name: "Bulgarian Split Stance 3-Point Jumps (left/right/center)", sets: "4", reps: "4", notes: "tipp: project forward" },
-            { name: "Nordic Hamstring", sets: "3", reps: "5", notes: "tipp: slow lowering; tipp: control hips" }
-          ]
         },
         {
-          type: "agility",
+          type: "strength",
           title: "Saturday – Athletic 2",
           exercises: [
             { name: "Single-Leg Bulgarian Jump (max height)", sets: "4", reps: "4 each leg", notes: "tipp: minimal dip; tipp: explosive knee drive" },
@@ -131,13 +129,14 @@ const DETAILS: Record<string, PositionDetails> = {
           ]
         },
         {
-          type: "technique",
+          type: "strength",
           title: "Sunday – Rest",
           exercises: [
             { name: "Recovery", sets: "1", reps: "N/A", notes: "tipp: mobility work; tipp: soft tissue recovery; tipp: 8+ hours sleep; tipp: eat snacks (reward :) )" }
           ]
         }
-      ]
+      ],
+      field: [],
     },
     diet: {
       meals: [
