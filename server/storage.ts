@@ -71,20 +71,70 @@ const DETAILS: Record<string, PositionDetails> = {
       gym: [
         {
           type: "strength",
-          title: "Explosive Power",
+          title: "Monday – Lower Body 1",
           exercises: [
-            { name: "Power Cleans", sets: "5", reps: "3", notes: "Focus on speed" },
-            { name: "Box Jumps", sets: "4", reps: "5", notes: "Max height" }
+            { name: "Deadlift", sets: "4", reps: "5", notes: "tipp: 1–2 reps in reserve; tipp: neutral spine always" },
+            { name: "Hang Clean", sets: "4", reps: "4–3", notes: "tipp: bar close to body; tipp: full hip extension" },
+            { name: "Bulgarian Split Squat", sets: "4", reps: "6 (each leg)", notes: "tipp: knee over toes; tipp: control the eccentric" }
+          ]
+        },
+        {
+          type: "strength",
+          title: "Tuesday – Upper Body 1",
+          exercises: [
+            { name: "Incline Bench Press (Explosive)", sets: "4", reps: "6–5", notes: "tipp: max bar speed; tipp: full reset each rep" },
+            { name: "Flat Bench Press", sets: "4", reps: "8–6", notes: "tipp: controlled lowering" },
+            { name: "Triceps Pushdown", sets: "4", reps: "8", notes: "tipp: full lockout; tipp: slow eccentric" },
+            { name: "Shoulder Prehab (rotator cuff / face pulls)", sets: "4", reps: "N/A", notes: "tipp: light weight; tipp: strict form" }
+          ]
+        },
+        {
+          type: "strength",
+          title: "Thursday – Lower Body 2",
+          exercises: [
+            { name: "Back Squat", sets: "4", reps: "6", notes: "tipp: drive through mid-foot; tipp: explosive concentric" },
+            { name: "Single-Leg Squat", sets: "4", reps: "8–6 each leg", notes: "tipp: balance first; tipp: controlled tempo" },
+            { name: "Weighted Bulgarian Split Squat → Single-Leg Box Jump", sets: "4", reps: "4", notes: "tipp: quick transition; tipp: max intent jump" }
+          ]
+        },
+        {
+          type: "strength",
+          title: "Friday – Upper Body 2",
+          exercises: [
+            { name: "Pull-ups / Lat Pulldown", sets: "4", reps: "8–6", notes: "tipp: chest to bar; tipp: full stretch" },
+            { name: "Barbell or Dumbbell Row", sets: "4", reps: "8–6", notes: "tipp: squeeze shoulder blades; tipp: no torso swing" },
+            { name: "Shrugs", sets: "4", reps: "8", notes: "tipp: pause at top; tipp: controlled down" },
+            { name: "Barbell or Dumbbell Curls", sets: "4", reps: "8–6", notes: "tipp: strict reps; tipp: full extension" },
+            { name: "Shoulder Prehab (rotator cuff / face pulls)", sets: "4", reps: "High reps", notes: "tipp: perfect posture" }
           ]
         }
       ],
       field: [
         {
           type: "agility",
-          title: "Route Running",
+          title: "Wednesday – Athletic 1",
           exercises: [
-            { name: "Cone Drills (L-Drill)", sets: "4", reps: "1", notes: "Sharp cuts" },
-            { name: "Gauntlet Catching", sets: "1", reps: "10 catches", notes: "Hand eye coordination" }
+            { name: "Weighted Box Jump", sets: "4", reps: "3", notes: "tipp: full recovery; tipp: stick the landing" },
+            { name: "Side Hurdle to Box Jump (Single Leg)", sets: "4", reps: "3 each leg", notes: "tipp: minimal ground contact; tipp: stay elastic" },
+            { name: "Bulgarian Split Stance 3-Point Jumps (left/right/center)", sets: "4", reps: "4", notes: "tipp: project forward" },
+            { name: "Nordic Hamstring", sets: "3", reps: "5", notes: "tipp: slow lowering; tipp: control hips" }
+          ]
+        },
+        {
+          type: "agility",
+          title: "Saturday – Athletic 2",
+          exercises: [
+            { name: "Single-Leg Bulgarian Jump (max height)", sets: "4", reps: "4 each leg", notes: "tipp: minimal dip; tipp: explosive knee drive" },
+            { name: "Hurdle to Box Jump", sets: "4", reps: "3", notes: "tipp: reactive contact; tipp: tall posture" },
+            { name: "Depth Jump to Broad Jump", sets: "4", reps: "4", notes: "tipp: short ground time; tipp: project forward" },
+            { name: "Pogo Hops", sets: "3", reps: "30 sec", notes: "tipp: stiff ankles; tipp: quick contacts" }
+          ]
+        },
+        {
+          type: "technique",
+          title: "Sunday – Rest",
+          exercises: [
+            { name: "Recovery", sets: "1", reps: "N/A", notes: "tipp: mobility work; tipp: soft tissue recovery; tipp: 8+ hours sleep; tipp: eat snacks (reward :) )" }
           ]
         }
       ]

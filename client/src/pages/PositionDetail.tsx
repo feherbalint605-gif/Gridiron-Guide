@@ -66,7 +66,7 @@ export default function PositionDetail() {
             onClick={() => setActiveTab("gym")}
             icon={<Shield className="w-4 h-4" />}
           >
-            Strength & Gym
+            Gym & Plyo
           </TabButton>
           <TabButton 
             active={activeTab === "field"} 
