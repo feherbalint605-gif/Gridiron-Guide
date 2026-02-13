@@ -1,7 +1,7 @@
 import { useParams, Link } from "wouter";
 import { usePosition } from "@/hooks/use-positions";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Dumbbell, Utensils, Zap, Shield } from "lucide-react";
+import { ArrowLeft, Dumbbell, Utensils, Zap, Shield, Video } from "lucide-react";
 import { useState } from "react";
 import { WorkoutCard } from "@/components/WorkoutCard";
 import { DietCard } from "@/components/DietCard";
@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 export default function PositionDetail() {
   const { id } = useParams();
   const { data: position, isLoading } = usePosition(id || "");
-  const [activeTab, setActiveTab] = useState<"gym" | "field" | "diet">("gym");
+  const [activeTab, setActiveTab] = useState<"gym" | "field" | "diet" | "film">("gym");
 
   if (isLoading) {
     return (
@@ -82,6 +82,13 @@ export default function PositionDetail() {
           >
             Fuel & Nutrition
           </TabButton>
+          <TabButton 
+            active={activeTab === "film"} 
+            onClick={() => setActiveTab("film")}
+            icon={<Video className="w-4 h-4" />}
+          >
+            Film & Study
+          </TabButton>
         </div>
 
         {/* Content Area */}
@@ -136,6 +143,17 @@ export default function PositionDetail() {
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {activeTab === "film" && (
+              <div className="min-h-[400px] flex flex-col items-center justify-center text-center p-8 bg-card/20 rounded-2xl border border-dashed border-primary/20">
+                <Video className="w-16 h-16 text-primary/20 mb-4" />
+                <h3 className="text-xl font-display font-bold text-foreground mb-2">FILM & STUDY ROOM</h3>
+                <p className="text-muted-foreground max-w-md">
+                  This section is currently being prepared by the coaching staff. 
+                  Check back soon for game film analysis and tactical playbooks.
+                </p>
               </div>
             )}
           </motion.div>

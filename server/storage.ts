@@ -61,7 +61,8 @@ const DETAILS: Record<string, PositionDetails> = {
         { meal: "Snacks", items: ["Protein Shake", "Almonds", "Greek Yogurt"] }
       ],
       proteinTarget: "1.8g per kg of bodyweight"
-    }
+    },
+    filmStudy: []
   },
   wr: {
     id: "wr",
@@ -146,7 +147,8 @@ const DETAILS: Record<string, PositionDetails> = {
         { meal: "Tippek", items: ["Olcsó alapok: zab, tojás, banán, spenót, joghurt nagy kiszerelésben", "Főzz nagy adag rizst 3–4 napra, sokat spórolsz."] }
       ],
       proteinTarget: "1.6g - 1.8g per kg of bodyweight"
-    }
+    },
+    filmStudy: []
   },
   rb: {
     id: "rb",
@@ -182,7 +184,8 @@ const DETAILS: Record<string, PositionDetails> = {
         { meal: "Snacks", items: ["Cottage Cheese", "Banana"] }
       ],
       proteinTarget: "2.0g per kg of bodyweight"
-    }
+    },
+    filmStudy: []
   },
   lb: {
     id: "lb",
@@ -219,7 +222,8 @@ const DETAILS: Record<string, PositionDetails> = {
         { meal: "Snacks", items: ["Protein Bar", "Peanut Butter Toast"] }
       ],
       proteinTarget: "2.0g - 2.2g per kg of bodyweight"
-    }
+    },
+    filmStudy: []
   },
   db: {
     id: "db",
@@ -255,7 +259,8 @@ const DETAILS: Record<string, PositionDetails> = {
         { meal: "Snacks", items: ["Trail Mix", "Protein Shake"] }
       ],
       proteinTarget: "1.8g per kg of bodyweight"
-    }
+    },
+    filmStudy: []
   },
   ol: {
     id: "ol",
@@ -292,7 +297,8 @@ const DETAILS: Record<string, PositionDetails> = {
         { meal: "Snacks", items: ["PB&J Sandwiches", "Mass Gainer Shake"] }
       ],
       proteinTarget: "2.0g - 2.4g per kg of bodyweight"
-    }
+    },
+    filmStudy: []
   },
   dl: {
     id: "dl",
@@ -328,7 +334,8 @@ const DETAILS: Record<string, PositionDetails> = {
         { meal: "Snacks", items: ["Protein Bar", "Milk", "Nuts"] }
       ],
       proteinTarget: "2.0g - 2.2g per kg of bodyweight"
-    }
+    },
+    filmStudy: []
   }
 };
 

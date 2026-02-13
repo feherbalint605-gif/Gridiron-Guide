@@ -41,7 +41,8 @@ export const positionDetailsSchema = z.object({
   diet: z.object({
     meals: z.array(dietSchema),
     proteinTarget: z.string()
-  })
+  }),
+  filmStudy: z.array(z.string()).optional()
 });
 
 export type Position = typeof positions.$inferSelect;
