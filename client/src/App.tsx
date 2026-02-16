@@ -46,38 +46,40 @@ function App() {
     );
   }
 
-  if (!isAuthenticated) {
-    return null;
-  }
-
   const style = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
   };
 
   return (
+    <SidebarProvider style={style as React.CSSProperties}>
+      <div className="flex h-screen w-full bg-background text-foreground dark">
+        {isAuthenticated && <AppSidebar />}
+        <div className="flex flex-col flex-1 overflow-hidden">
+          {isAuthenticated && (
+            <header className="flex items-center justify-between p-4 border-b border-border bg-card/50 backdrop-blur-sm">
+              <div className="flex items-center gap-4">
+                <SidebarTrigger data-testid="button-sidebar-toggle" />
+                <h1 className="text-xl font-bold tracking-tighter text-primary">GRIDIRON TRAINING</h1>
+              </div>
+            </header>
+          )}
+          <main className="flex-1 overflow-y-auto">
+            <Router />
+          </main>
+        </div>
+      </div>
+    </SidebarProvider>
+  );
+}
+
+export default function Root() {
+  return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <SidebarProvider style={style as React.CSSProperties}>
-          <div className="flex h-screen w-full bg-background text-foreground dark">
-            <AppSidebar />
-            <div className="flex flex-col flex-1 overflow-hidden">
-              <header className="flex items-center justify-between p-4 border-b border-border bg-card/50 backdrop-blur-sm">
-                <div className="flex items-center gap-4">
-                  <SidebarTrigger data-testid="button-sidebar-toggle" />
-                  <h1 className="text-xl font-bold tracking-tighter text-primary">GRIDIRON TRAINING</h1>
-                </div>
-              </header>
-              <main className="flex-1 overflow-y-auto">
-                <Router />
-              </main>
-            </div>
-          </div>
-        </SidebarProvider>
+        <App />
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
   );
 }
-
-export default App;
