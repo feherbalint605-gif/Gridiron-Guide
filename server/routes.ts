@@ -2,11 +2,15 @@ import type { Express } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
+import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // Set up authentication first
+  await setupAuth(app);
+  registerAuthRoutes(app);
   
   app.get(api.positions.list.path, async (_req, res) => {
     const positions = await storage.getPositions();

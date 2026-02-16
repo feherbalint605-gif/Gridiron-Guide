@@ -5,10 +5,13 @@ import { z } from "zod";
 // We don't strictly need a DB table for hardcoded data, but we'll define the shape here
 // so both frontend and backend share the types.
 
+export * from "./models/auth";
+
 export const positions = pgTable("positions", {
   id: text("id").primaryKey(), // e.g., 'qb', 'wr'
   name: text("name").notNull(),
   description: text("description").notNull(),
+  details: jsonb("details").$type<PositionDetails>().notNull(),
 });
 
 // JSON structures for the complex data
