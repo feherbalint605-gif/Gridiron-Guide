@@ -16,6 +16,12 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/position/:id" component={PositionDetail} />
+      <Route path="/film">
+        <div className="p-8 text-center text-muted-foreground">Film content coming soon...</div>
+      </Route>
+      <Route path="/study">
+        <div className="p-8 text-center text-muted-foreground">Study material coming soon...</div>
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );

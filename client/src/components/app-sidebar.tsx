@@ -2,7 +2,7 @@ import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGrou
 import { useQuery } from "@tanstack/react-query";
 import { type Position } from "@shared/schema";
 import { Link, useLocation } from "wouter";
-import { Home, Trophy, User } from "lucide-react";
+import { Home, Trophy, User, Video, BookOpen } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 
@@ -16,6 +16,8 @@ export function AppSidebar() {
 
   const mainItems = [
     { title: "Dashboard", url: "/", icon: Home },
+    { title: "Film", url: "/film", icon: Video },
+    { title: "Study", url: "/study", icon: BookOpen },
   ];
 
   return (
