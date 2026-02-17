@@ -53,31 +53,83 @@ const positionData = [
       workouts: {
         gym: [
           {
-            type: "agility",
-            title: "Explosive Lower Body",
+            type: "strength",
+            title: "Monday – Lower Body 1",
             exercises: [
-              { name: "Box Jumps", sets: "4", reps: "5", notes: "Focus on vertical height" },
-              { name: "Bulgarian Split Squats", sets: "3", reps: "10", notes: "Build unilateral strength" }
+              { name: "Deadlift", sets: "4", reps: "5", notes: "tipp: 1–2 reps in reserve, neutral spine always" },
+              { name: "Hang Clean", sets: "4", reps: "4–3", notes: "tipp: bar close to body, full hip extension" },
+              { name: "Bulgarian Split Squat", sets: "4", reps: "6 (each leg)", notes: "tipp: knee over toes, control the eccentric" }
+            ]
+          },
+          {
+            type: "strength",
+            title: "Tuesday – Upper Body 1",
+            exercises: [
+              { name: "Incline Bench Press (Explosive)", sets: "4", reps: "6–5", notes: "tipp: max bar speed, full reset each rep" },
+              { name: "Flat Bench Press", sets: "4", reps: "8–6", notes: "tipp: controlled lowering" },
+              { name: "Triceps Pushdown", sets: "4", reps: "8", notes: "tipp: full lockout, slow eccentric" },
+              { name: "Shoulder Prehab", sets: "1", reps: "High", notes: "tipp: light weight, strict form (rotator cuff / face pulls)" }
+            ]
+          },
+          {
+            type: "agility",
+            title: "Wednesday – Athletic 1",
+            exercises: [
+              { name: "Weighted Box Jump", sets: "4", reps: "3", notes: "tipp: full recovery, stick the landing" },
+              { name: "Side Hurdle to Box Jump (Single Leg)", sets: "4", reps: "3 each leg", notes: "tipp: minimal ground contact, stay elastic" },
+              { name: "Bulgarian Split Stance 3-Point Jumps", sets: "4", reps: "4", notes: "tipp: project forward (left/right/center)" },
+              { name: "Nordic Hamstring", sets: "3", reps: "5", notes: "tipp: slow lowering, control hips" }
+            ]
+          },
+          {
+            type: "strength",
+            title: "Thursday – Lower Body 2",
+            exercises: [
+              { name: "Back Squat", sets: "4", reps: "6", notes: "tipp: drive through mid-foot, explosive concentric" },
+              { name: "Single-Leg Squat", sets: "4", reps: "8–6 each leg", notes: "tipp: balance first, controlled tempo" },
+              { name: "Weighted Bulgarian Split Squat → Single-Leg Box Jump", sets: "4", reps: "4", notes: "tipp: quick transition, max intent jump" }
+            ]
+          },
+          {
+            type: "strength",
+            title: "Friday – Upper Body 2",
+            exercises: [
+              { name: "Pull-ups / Lat Pulldown", sets: "4", reps: "8–6", notes: "tipp: chest to bar, full stretch" },
+              { name: "Barbell or Dumbbell Row", sets: "4", reps: "8–6", notes: "tipp: squeeze shoulder blades, no torso swing" },
+              { name: "Shrugs", sets: "4", reps: "8", notes: "tipp: pause at top, controlled down" },
+              { name: "Barbell or Dumbbell Curls", sets: "4", reps: "8–6", notes: "tipp: strict reps, full extension" },
+              { name: "Shoulder Prehab", sets: "1", reps: "High", notes: "tipp: perfect posture (rotator cuff / face pulls)" }
+            ]
+          },
+          {
+            type: "agility",
+            title: "Saturday – Athletic 2",
+            exercises: [
+              { name: "Single-Leg Bulgarian Jump (max height)", sets: "4", reps: "4 each leg", notes: "tipp: minimal dip, explosive knee drive" },
+              { name: "Hurdle to Box Jump", sets: "4", reps: "3", notes: "tipp: reactive contact, tall posture" },
+              { name: "Depth Jump to Broad Jump", sets: "4", reps: "4", notes: "tipp: short ground time, project forward" },
+              { name: "Pogo Hops", sets: "1", reps: "30 sec", notes: "tipp: stiff ankles, quick contacts" }
             ]
           }
         ],
         field: [
           {
             type: "technique",
-            title: "Route Running",
+            title: "Sunday – Rest & Mobility",
             exercises: [
-              { name: "Cone Weave", sets: "4", reps: "20 yards", notes: "Stay low in breaks" },
-              { name: "Release Drills", sets: "5", reps: "5", notes: "Win at the line of scrimmage" }
+              { name: "Mobility Work", sets: "1", reps: "Variable", notes: "tipp: soft tissue recovery, 8+ hours sleep" },
+              { name: "Recovery", sets: "1", reps: "N/A", notes: "tipp: eat snacks (reward :) )" }
             ]
           }
         ]
       },
       diet: {
         meals: [
-          { meal: "Lunch", items: ["Grilled chicken breast", "Brown rice", "Broccoli"], protein: "45g" },
-          { meal: "Dinner", items: ["Salmon filet", "Sweet potato", "Asparagus"], protein: "40g" }
+          { meal: "REGGELI (olcsó, gyors, izomépítő)", items: ["1. Zabkása (zab + tej/víz) + banán + 1 kanál mogyoróvaj", "2. 4 tojás rántotta + teljes kiőrlésű pirítós + spenót", "3. Görög joghurt (nagy dobozos) + zab + fagyasztott gyümölcs", "4. Tojásos tortilla wrap (tojás + spenót + kis sajt)", "5. Overnight oats (zab + tej + chia mag + banán)", "6. Cottage cheese + alma + méz", "7. Protein smoothie (tej + zab + banán + mogyoróvaj)"], protein: "Változó (magas)" },
+          { meal: "EBÉD (tömegelés, regeneráció, de nem drága)", items: ["1. Grillezett csirkemell + rizs + fagyasztott brokkoli", "2. Darált pulyka vagy marha + rizs + zöldség", "3. Csirkés tészta (tészta + paradicsomszósz)", "4. Burrito bowl (rizs + bab + csirke + kukorica)", "5. Tonhal konzerv + rizs + saláta", "6. Édesburgonya + tojás + spenót", "7. Lencse + rizs + csirke"], protein: "Változó (magas)" },
+          { meal: "VACSORA (könnyebb, de fehérjedús)", items: ["1. Csirke + párolt zöldség", "2. Tojásos omlett spenóttal", "3. Darált hús + saláta", "4. Cottage cheese + dió", "5. Tonhal + tojás + zöldség", "6. Csirke + rizs kisebb adagban", "7. Fehérjeturmix + banán"], protein: "Változó (magas)" }
         ],
-        proteinTarget: "160g"
+        proteinTarget: "160g+"
       },
       filmStudy: ["Beating Press Coverage", "Stemming Routes", "Hand Fighting"]
     }
