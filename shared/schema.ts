@@ -23,6 +23,7 @@ export const workoutLogs = pgTable("workout_logs", {
   exerciseName: text("exercise_name").notNull(),
   setIndex: integer("set_index").notNull(),
   weight: integer("weight").notNull(), // in lbs
+  reps: integer("reps"), // actual reps performed
 });
 
 export const insertWorkoutLogSchema = createInsertSchema(workoutLogs).omit({ id: true });

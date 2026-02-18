@@ -221,7 +221,7 @@ export default function PositionDetail() {
                               <p className="font-bold text-foreground">{ex.name}</p>
                               <p className="text-xs text-muted-foreground">{ex.sets} sets x {ex.reps} reps</p>
                             </div>
-                            <div className="md:col-span-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
                               {Array.from({ length: parseInt(ex.sets) || 1 }).map((_, sIdx) => {
                                 const log = logs?.find(l => 
                                   l.week === selectedWeek && 
@@ -230,27 +230,54 @@ export default function PositionDetail() {
                                   l.setIndex === sIdx
                                 );
                                 return (
-                                  <div key={sIdx} className="relative group">
-                                    <Input
-                                      type="number"
-                                      placeholder={`Set ${sIdx + 1}`}
-                                      defaultValue={log?.weight || ""}
-                                      className="bg-black/50 border-primary/20 h-10 text-sm focus:border-primary pr-8"
-                                      onBlur={(e) => {
-                                        const val = parseInt(e.target.value);
-                                        if (val && val !== log?.weight) {
-                                          mutation.mutate({
-                                            positionId: id,
-                                            week: selectedWeek,
-                                            workoutTitle: workout.title,
-                                            exerciseName: ex.name,
-                                            setIndex: sIdx,
-                                            weight: val
-                                          });
-                                        }
-                                      }}
-                                    />
-                                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none">lbs</span>
+                                  <div key={sIdx} className="flex gap-2 items-center bg-black/20 p-2 rounded-lg border border-border/30">
+                                    <span className="text-[10px] font-mono text-muted-foreground w-8">SET {sIdx + 1}</span>
+                                    <div className="relative flex-1">
+                                      <Input
+                                        type="number"
+                                        placeholder="lbs"
+                                        defaultValue={log?.weight || ""}
+                                        className="bg-black/50 border-primary/20 h-8 text-xs focus:border-primary pr-6"
+                                        onBlur={(e) => {
+                                          const val = parseInt(e.target.value);
+                                          if (val && val !== log?.weight) {
+                                            mutation.mutate({
+                                              positionId: id,
+                                              week: selectedWeek,
+                                              workoutTitle: workout.title,
+                                              exerciseName: ex.name,
+                                              setIndex: sIdx,
+                                              weight: val,
+                                              reps: log?.reps || parseInt(ex.reps) || 0
+                                            });
+                                          }
+                                        }}
+                                      />
+                                      <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[8px] text-muted-foreground pointer-events-none uppercase">lbs</span>
+                                    </div>
+                                    <div className="relative flex-1">
+                                      <Input
+                                        type="number"
+                                        placeholder="reps"
+                                        defaultValue={log?.reps || ""}
+                                        className="bg-black/50 border-accent/20 h-8 text-xs focus:border-accent pr-6"
+                                        onBlur={(e) => {
+                                          const val = parseInt(e.target.value);
+                                          if (val && val !== log?.reps) {
+                                            mutation.mutate({
+                                              positionId: id,
+                                              week: selectedWeek,
+                                              workoutTitle: workout.title,
+                                              exerciseName: ex.name,
+                                              setIndex: sIdx,
+                                              weight: log?.weight || 0,
+                                              reps: val
+                                            });
+                                          }
+                                        }}
+                                      />
+                                      <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[8px] text-muted-foreground pointer-events-none uppercase">reps</span>
+                                    </div>
                                   </div>
                                 );
                               })}
