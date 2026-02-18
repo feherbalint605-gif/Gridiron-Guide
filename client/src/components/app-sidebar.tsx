@@ -40,24 +40,6 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Positions</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {positions?.map((pos) => (
-                <SidebarMenuItem key={pos.id}>
-                  <SidebarMenuButton asChild isActive={location === `/position/${pos.id}`}>
-                    <Link href={`/position/${pos.id}`} className="flex items-center gap-2">
-                      <Trophy className="w-4 h-4" />
-                      <span>{pos.name}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
       </SidebarContent>
       
       <div className="mt-auto p-4 border-t border-border bg-card/50">
