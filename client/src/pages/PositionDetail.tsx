@@ -1,16 +1,39 @@
 import { useParams, Link } from "wouter";
 import { usePosition } from "@/hooks/use-positions";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Dumbbell, Utensils, Zap, Shield, Video } from "lucide-react";
+import { ArrowLeft, Dumbbell, Utensils, Zap, Shield, Video, Plus, History, Save } from "lucide-react";
 import { useState } from "react";
 import { WorkoutCard } from "@/components/WorkoutCard";
 import { DietCard } from "@/components/DietCard";
 import { cn } from "@/lib/utils";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
 
 export default function PositionDetail() {
   const { id } = useParams();
   const { data: position, isLoading } = usePosition(id || "");
-  const [activeTab, setActiveTab] = useState<"gym" | "field" | "diet" | "film">("gym");
+  const [activeTab, setActiveTab] = useState<"gym" | "field" | "diet" | "film" | "tracking">("gym");
+  const [selectedWeek, setSelectedWeek] = useState(1);
+  const { toast } = useToast();
+
+  const { data: logs } = useQuery<any[]>({
+    queryKey: [`/api/workout-logs/${id}`],
+    enabled: !!id,
+  });
+
+  const mutation = useMutation({
+    mutationFn: async (newLog: any) => {
+      const res = await apiRequest("POST", "/api/workout-logs", newLog);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/workout-logs/${id}`] });
+      toast({ title: "Súly elmentve!", description: "A fejlődésed rögzítettük." });
+    },
+  });
 
   if (isLoading) {
     return (
@@ -89,6 +112,13 @@ export default function PositionDetail() {
           >
             Film & Study
           </TabButton>
+          <TabButton 
+            active={activeTab === "tracking"} 
+            onClick={() => setActiveTab("tracking")}
+            icon={<History className="w-4 h-4" />}
+          >
+            Weight Tracking
+          </TabButton>
         </div>
 
         {/* Content Area */}
@@ -154,6 +184,83 @@ export default function PositionDetail() {
                   This section is currently being prepared by the coaching staff. 
                   Check back soon for game film analysis and tactical playbooks.
                 </p>
+              </div>
+            )}
+
+            {activeTab === "tracking" && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-display font-bold text-primary">Progress Tracking</h3>
+                  <div className="flex items-center gap-4 bg-card p-2 rounded-lg border border-border">
+                    <span className="text-sm font-mono uppercase text-muted-foreground">Week:</span>
+                    {[1, 2, 3, 4, 5, 6].map(w => (
+                      <button
+                        key={w}
+                        onClick={() => setSelectedWeek(w)}
+                        className={cn(
+                          "w-8 h-8 rounded flex items-center justify-center font-bold text-sm transition-all",
+                          selectedWeek === w ? "bg-primary text-black" : "hover:bg-white/10"
+                        )}
+                      >
+                        {w}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid gap-6">
+                  {position.workouts.gym.map((workout, wIdx) => (
+                    <div key={wIdx} className="bg-card/30 rounded-xl border border-border overflow-hidden">
+                      <div className="bg-primary/10 px-4 py-2 border-b border-primary/20">
+                        <h4 className="font-bold text-primary uppercase text-sm tracking-widest">{workout.title}</h4>
+                      </div>
+                      <div className="p-4 space-y-4">
+                        {workout.exercises.map((ex, exIdx) => (
+                          <div key={exIdx} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center border-b border-border/50 pb-4 last:border-0 last:pb-0">
+                            <div className="md:col-span-1">
+                              <p className="font-bold text-foreground">{ex.name}</p>
+                              <p className="text-xs text-muted-foreground">{ex.sets} sets x {ex.reps} reps</p>
+                            </div>
+                            <div className="md:col-span-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                              {Array.from({ length: parseInt(ex.sets) || 1 }).map((_, sIdx) => {
+                                const log = logs?.find(l => 
+                                  l.week === selectedWeek && 
+                                  l.workoutTitle === workout.title && 
+                                  l.exerciseName === ex.name && 
+                                  l.setIndex === sIdx
+                                );
+                                return (
+                                  <div key={sIdx} className="relative group">
+                                    <Input
+                                      type="number"
+                                      placeholder={`Set ${sIdx + 1}`}
+                                      defaultValue={log?.weight || ""}
+                                      className="bg-black/50 border-primary/20 h-10 text-sm focus:border-primary pr-8"
+                                      onBlur={(e) => {
+                                        const val = parseInt(e.target.value);
+                                        if (val && val !== log?.weight) {
+                                          mutation.mutate({
+                                            positionId: id,
+                                            week: selectedWeek,
+                                            workoutTitle: workout.title,
+                                            exerciseName: ex.name,
+                                            setIndex: sIdx,
+                                            weight: val
+                                          });
+                                        }
+                                      }}
+                                    />
+                                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none">lbs</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </motion.div>

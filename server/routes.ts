@@ -28,5 +28,20 @@ export async function registerRoutes(
     res.json(details);
   });
 
+  app.get("/api/workout-logs/:positionId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const logs = await storage.getWorkoutLogs(req.user!.id, req.params.positionId);
+    res.json(logs);
+  });
+
+  app.post("/api/workout-logs", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const log = await storage.saveWorkoutLog({
+      ...req.body,
+      userId: req.user!.id
+    });
+    res.json(log);
+  });
+
   return httpServer;
 }

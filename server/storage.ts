@@ -1,11 +1,14 @@
-import { type Position, type PositionDetails, users, positions as positionsTable } from "@shared/schema";
+import { type Position, type PositionDetails, type WorkoutLog, type InsertWorkoutLog, users, positions as positionsTable, workoutLogs } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 export interface IStorage {
   getPositions(): Promise<Position[]>;
   getPositionDetails(id: string): Promise<PositionDetails | undefined>;
   updatePositionDetails(id: string, details: PositionDetails): Promise<void>;
+  // Workout Logs
+  getWorkoutLogs(userId: number, positionId: string): Promise<WorkoutLog[]>;
+  saveWorkoutLog(log: InsertWorkoutLog): Promise<WorkoutLog>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -20,6 +23,20 @@ export class DatabaseStorage implements IStorage {
 
   async updatePositionDetails(id: string, details: PositionDetails): Promise<void> {
     await db.update(positionsTable).set({ details }).where(eq(positionsTable.id, id));
+  }
+
+  async getWorkoutLogs(userId: number, positionId: string): Promise<WorkoutLog[]> {
+    return await db.select().from(workoutLogs).where(
+      and(
+        eq(workoutLogs.userId, userId),
+        eq(workoutLogs.positionId, positionId)
+      )
+    );
+  }
+
+  async saveWorkoutLog(log: InsertWorkoutLog): Promise<WorkoutLog> {
+    const [newLog] = await db.insert(workoutLogs).values(log).returning();
+    return newLog;
   }
 }
 

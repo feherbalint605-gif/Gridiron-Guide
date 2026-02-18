@@ -14,6 +14,21 @@ export const positions = pgTable("positions", {
   details: jsonb("details").$type<PositionDetails>().notNull(),
 });
 
+export const workoutLogs = pgTable("workout_logs", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  positionId: text("position_id").notNull(),
+  week: integer("week").notNull(),
+  workoutTitle: text("workout_title").notNull(),
+  exerciseName: text("exercise_name").notNull(),
+  setIndex: integer("set_index").notNull(),
+  weight: integer("weight").notNull(), // in lbs
+});
+
+export const insertWorkoutLogSchema = createInsertSchema(workoutLogs).omit({ id: true });
+export type WorkoutLog = typeof workoutLogs.$inferSelect;
+export type InsertWorkoutLog = z.infer<typeof insertWorkoutLogSchema>;
+
 // JSON structures for the complex data
 export const workoutSchema = z.object({
   type: z.enum(["strength", "agility", "technique"]),
