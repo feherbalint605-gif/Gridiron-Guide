@@ -24,16 +24,16 @@ export default function PositionDetail() {
     enabled: !!id,
   });
 
-  const mutation = useMutation({
-    mutationFn: async (newLog: any) => {
-      const res = await apiRequest("POST", "/api/workout-logs", newLog);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/workout-logs/${id}`] });
-      toast({ title: "Súly elmentve!", description: "A fejlődésed rögzítettük." });
-    },
-  });
+    const mutation = useMutation({
+      mutationFn: async (newLog: any) => {
+        const res = await apiRequest("POST", "/api/workout-logs", newLog);
+        return res.json();
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: [`/api/workout-logs/${id}`] });
+        toast({ title: "Haladás mentve!", description: "A fejlődésed rögzítettük." });
+      },
+    });
 
   if (isLoading) {
     return (
@@ -230,17 +230,19 @@ export default function PositionDetail() {
                                   l.setIndex === sIdx
                                 );
                                 return (
-                                  <div key={sIdx} className="flex gap-2 items-center bg-black/20 p-2 rounded-lg border border-border/30">
+                                  <div key={`${selectedWeek}-${sIdx}`} className="flex gap-2 items-center bg-black/20 p-2 rounded-lg border border-border/30">
                                     <span className="text-[10px] font-mono text-muted-foreground w-8">SET {sIdx + 1}</span>
                                     <div className="relative flex-1">
                                       <Input
+                                        key={`weight-${selectedWeek}-${sIdx}`}
                                         type="number"
                                         placeholder="lbs"
                                         defaultValue={log?.weight || ""}
                                         className="bg-black/50 border-primary/20 h-8 text-xs focus:border-primary pr-6"
                                         onBlur={(e) => {
                                           const val = parseInt(e.target.value);
-                                          if (val && val !== log?.weight) {
+                                          // Allow 0 or empty string by checking for NaN
+                                          if (!isNaN(val) && val !== (log?.weight || 0)) {
                                             mutation.mutate({
                                               positionId: id,
                                               week: selectedWeek,
@@ -257,13 +259,14 @@ export default function PositionDetail() {
                                     </div>
                                     <div className="relative flex-1">
                                       <Input
+                                        key={`reps-${selectedWeek}-${sIdx}`}
                                         type="number"
                                         placeholder="reps"
                                         defaultValue={log?.reps || ""}
                                         className="bg-black/50 border-accent/20 h-8 text-xs focus:border-accent pr-6"
                                         onBlur={(e) => {
                                           const val = parseInt(e.target.value);
-                                          if (val && val !== log?.reps) {
+                                          if (!isNaN(val) && val !== (log?.reps || 0)) {
                                             mutation.mutate({
                                               positionId: id,
                                               week: selectedWeek,
