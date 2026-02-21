@@ -35,6 +35,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async saveWorkoutLog(log: InsertWorkoutLog): Promise<WorkoutLog> {
+    const [existing] = await db.select().from(workoutLogs).where(
+      and(
+        eq(workoutLogs.userId, log.userId),
+        eq(workoutLogs.positionId, log.positionId),
+        eq(workoutLogs.week, log.week),
+        eq(workoutLogs.workoutTitle, log.workoutTitle),
+        eq(workoutLogs.exerciseName, log.exerciseName),
+        eq(workoutLogs.setIndex, log.setIndex)
+      )
+    );
+
+    if (existing) {
+      const [updated] = await db.update(workoutLogs)
+        .set({ weight: log.weight, reps: log.reps })
+        .where(eq(workoutLogs.id, existing.id))
+        .returning();
+      return updated;
+    }
+
     const [newLog] = await db.insert(workoutLogs).values(log).returning();
     return newLog;
   }
