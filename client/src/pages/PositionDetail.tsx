@@ -234,14 +234,13 @@ export default function PositionDetail() {
                                     <span className="text-[10px] font-mono text-muted-foreground w-8">SET {sIdx + 1}</span>
                                     <div className="relative flex-1">
                                       <Input
-                                        key={`weight-${selectedWeek}-${sIdx}`}
+                                        key={`weight-${selectedWeek}-${sIdx}-${log?.id || 'new'}`}
                                         type="number"
                                         placeholder="lbs"
-                                        defaultValue={log?.weight || ""}
+                                        defaultValue={log?.weight ?? ""}
                                         className="bg-black/50 border-primary/20 h-8 text-xs focus:border-primary pr-6"
                                         onBlur={(e) => {
                                           const val = parseInt(e.target.value);
-                                          // Allow 0 or empty string by checking for NaN
                                           if (!isNaN(val) && val !== (log?.weight || 0)) {
                                             mutation.mutate({
                                               positionId: id,
@@ -259,10 +258,10 @@ export default function PositionDetail() {
                                     </div>
                                     <div className="relative flex-1">
                                       <Input
-                                        key={`reps-${selectedWeek}-${sIdx}`}
+                                        key={`reps-${selectedWeek}-${sIdx}-${log?.id || 'new'}`}
                                         type="number"
                                         placeholder="reps"
-                                        defaultValue={log?.reps || ""}
+                                        defaultValue={log?.reps ?? ""}
                                         className="bg-black/50 border-accent/20 h-8 text-xs focus:border-accent pr-6"
                                         onBlur={(e) => {
                                           const val = parseInt(e.target.value);
