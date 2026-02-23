@@ -26,18 +26,23 @@ export default function PositionDetail() {
 
     const mutation = useMutation({
       mutationFn: async (newLog: any) => {
+        console.log("Sending log data:", newLog);
         const res = await apiRequest("POST", "/api/workout-logs", newLog);
-        return res.json();
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.message || "Failed to save");
+        }
+        return data;
       },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: [`/api/workout-logs/${id}`] });
         toast({ title: "Haladás mentve!", description: "A fejlődésed rögzítettük." });
       },
-      onError: (error) => {
+      onError: (error: any) => {
         console.error("Mutation error:", error);
         toast({ 
           title: "Hiba a mentésnél", 
-          description: "Nem sikerült elmenteni az adatokat. Kérlek próbáld újra.",
+          description: error.message || "Nem sikerült elmenteni az adatokat. Kérlek próbáld újra.",
           variant: "destructive"
         });
       }

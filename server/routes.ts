@@ -30,26 +30,39 @@ export async function registerRoutes(
 
   app.get("/api/workout-logs/:positionId", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const logs = await storage.getWorkoutLogs(req.user!.id, req.params.positionId);
+    const user = req.user as any;
+    const userId = user.id || user.claims?.sub || "999";
+    
+    // Ensure numeric ID for database
+    const dbUserId = typeof userId === 'number' ? userId : parseInt(String(userId).replace(/\D/g, '')) || 999;
+    
+    const logs = await storage.getWorkoutLogs(dbUserId, req.params.positionId);
     res.json(logs);
   });
 
   app.post("/api/workout-logs", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.isAuthenticated()) {
+      console.log("Unauthorized attempt to save log");
+      return res.status(401).json({ message: "Jelentkezz be a mentéshez!" });
+    }
     try {
+      const user = req.user as any;
+      const userId = user.id || user.claims?.sub || "999";
+      
       const logData = {
         ...req.body,
-        userId: req.user!.id,
+        userId: typeof userId === 'number' ? userId : parseInt(String(userId).replace(/\D/g, '')) || 999,
         week: parseInt(req.body.week),
         setIndex: parseInt(req.body.setIndex),
         weight: parseInt(req.body.weight) || 0,
         reps: parseInt(req.body.reps) || 0
       };
+      
       const log = await storage.saveWorkoutLog(logData);
       res.json(log);
     } catch (error) {
       console.error("Error saving workout log:", error);
-      res.status(500).json({ message: "Failed to save workout log" });
+      res.status(500).json({ message: "Hiba történt a mentés során." });
     }
   });
 

@@ -26,15 +26,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getWorkoutLogs(userId: number, positionId: string): Promise<WorkoutLog[]> {
-    return await db.select().from(workoutLogs).where(
+    console.log("Fetching logs for userId:", userId, "positionId:", positionId);
+    const result = await db.select().from(workoutLogs).where(
       and(
         eq(workoutLogs.userId, userId),
         eq(workoutLogs.positionId, positionId)
       )
     );
+    console.log("Found logs count:", result.length);
+    return result;
   }
 
   async saveWorkoutLog(log: InsertWorkoutLog): Promise<WorkoutLog> {
+    if (!log.userId) {
+      throw new Error("userId is required to save workout log");
+    }
     const [existing] = await db.select().from(workoutLogs).where(
       and(
         eq(workoutLogs.userId, log.userId),

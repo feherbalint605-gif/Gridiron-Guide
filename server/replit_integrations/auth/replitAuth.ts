@@ -99,8 +99,12 @@ export async function setupAuth(app: Express) {
     }
   };
 
-  passport.serializeUser((user: Express.User, cb) => cb(null, user));
-  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
+  passport.serializeUser((user: any, cb) => {
+    cb(null, user);
+  });
+  passport.deserializeUser((user: any, cb) => {
+    cb(null, user);
+  });
 
   app.get("/api/login", (req, res, next) => {
     // Force a specific callback URL if req.hostname is problematic (e.g. preview domain)
