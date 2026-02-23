@@ -36,11 +36,21 @@ export async function registerRoutes(
 
   app.post("/api/workout-logs", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const log = await storage.saveWorkoutLog({
-      ...req.body,
-      userId: req.user!.id
-    });
-    res.json(log);
+    try {
+      const logData = {
+        ...req.body,
+        userId: req.user!.id,
+        week: parseInt(req.body.week),
+        setIndex: parseInt(req.body.setIndex),
+        weight: parseInt(req.body.weight) || 0,
+        reps: parseInt(req.body.reps) || 0
+      };
+      const log = await storage.saveWorkoutLog(logData);
+      res.json(log);
+    } catch (error) {
+      console.error("Error saving workout log:", error);
+      res.status(500).json({ message: "Failed to save workout log" });
+    }
   });
 
   return httpServer;

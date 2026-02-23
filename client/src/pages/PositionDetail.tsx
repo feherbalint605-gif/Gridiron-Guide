@@ -33,6 +33,14 @@ export default function PositionDetail() {
         queryClient.invalidateQueries({ queryKey: [`/api/workout-logs/${id}`] });
         toast({ title: "Haladás mentve!", description: "A fejlődésed rögzítettük." });
       },
+      onError: (error) => {
+        console.error("Mutation error:", error);
+        toast({ 
+          title: "Hiba a mentésnél", 
+          description: "Nem sikerült elmenteni az adatokat. Kérlek próbáld újra.",
+          variant: "destructive"
+        });
+      }
     });
 
   if (isLoading) {
