@@ -262,7 +262,7 @@ export default function PositionDetail() {
                                               exerciseName: ex.name,
                                               setIndex: sIdx,
                                               weight: val,
-                                              reps: log?.reps || parseInt(ex.reps) || 0
+                                              reps: log?.reps || 0 // Do not auto-fill from exercise default
                                             });
                                           }
                                         }}
