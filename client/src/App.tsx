@@ -11,7 +11,26 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { useAuth } from "@/hooks/use-auth";
 import { useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
+import RoleSelection from "@/components/RoleSelection";
+
 function Router() {
+  const { user } = useAuth();
+  
+  if (user && !user.role) {
+    return <RoleSelection onSelect={() => {}} />;
+  }
+
+  if (user?.role === 'coach') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <h1 className="text-4xl font-display font-black text-accent mb-4 italic">COACH PORTAL</h1>
+          <p className="text-muted-foreground uppercase tracking-widest">System offline. Content coming soon.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Switch>
       <Route path="/" component={Home} />

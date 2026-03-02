@@ -10,6 +10,8 @@ export function AppSidebar() {
   const [location] = useLocation();
   const { user, logout } = useAuth();
   
+  if (user?.role === 'coach') return null;
+  
   const { data: positions } = useQuery<Position[]>({
     queryKey: ["/api/positions"],
   });

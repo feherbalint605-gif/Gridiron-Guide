@@ -28,6 +28,26 @@ export async function registerRoutes(
     res.json(details);
   });
 
+  app.post("/api/user/role", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const { role } = req.body;
+    if (!['athlete', 'coach'].includes(role)) {
+      return res.status(400).json({ message: "Invalid role" });
+    }
+    
+    const user = req.user as any;
+    const userId = user.id || user.claims?.sub;
+    
+    if (!userId) return res.status(401).json({ message: "User not found" });
+
+    const [updatedUser] = await db.update(users)
+      .set({ role })
+      .where(eq(users.id, userId))
+      .returning();
+      
+    res.json(updatedUser);
+  });
+
   app.get("/api/workout-logs/:positionId", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const user = req.user as any;
