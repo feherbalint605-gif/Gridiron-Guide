@@ -13,30 +13,7 @@ import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import RoleSelection from "@/components/RoleSelection";
 
-function CoachPortal({ onSwitchRole }: { onSwitchRole: () => void }) {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center space-y-6">
-        <h1 className="text-4xl font-display font-black text-accent mb-4 italic">COACH PORTAL</h1>
-        <p className="text-muted-foreground uppercase tracking-widest">System offline. Content coming soon.</p>
-        <button
-          onClick={onSwitchRole}
-          className="mt-6 px-6 py-2 border border-primary/40 text-primary text-sm uppercase tracking-widest rounded hover:bg-primary/10 transition-colors"
-        >
-          Switch to Athlete
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function Router({ onSwitchRole }: { onSwitchRole: () => void }) {
-  const { user } = useAuth();
-
-  if (user?.role === 'coach') {
-    return <CoachPortal onSwitchRole={onSwitchRole} />;
-  }
-
+function AthleteRouter() {
   return (
     <Switch>
       <Route path="/" component={Home} />
@@ -80,9 +57,7 @@ function App() {
 
   if (isAuthenticated && showRoleSelect) {
     return (
-      <div className="dark">
-        <RoleSelection onSelect={() => setShowRoleSelect(false)} />
-      </div>
+      <RoleSelection onSelect={() => setShowRoleSelect(false)} />
     );
   }
 
@@ -91,31 +66,21 @@ function App() {
     "--sidebar-width-icon": "3rem",
   };
 
-  const isCoach = user?.role === 'coach';
-
   return (
     <SidebarProvider style={style as React.CSSProperties}>
       <div className="flex h-screen w-full bg-background text-foreground dark">
-        {isAuthenticated && !isCoach && <AppSidebar onSwitchRole={() => setShowRoleSelect(true)} />}
+        {isAuthenticated && <AppSidebar onSwitchRole={() => setShowRoleSelect(true)} />}
         <div className="flex flex-col flex-1 overflow-hidden">
           {isAuthenticated && (
             <header className="flex items-center justify-between p-4 border-b border-border bg-card/50 backdrop-blur-sm">
               <div className="flex items-center gap-4">
-                {!isCoach && <SidebarTrigger data-testid="button-sidebar-toggle" />}
+                <SidebarTrigger data-testid="button-sidebar-toggle" />
                 <h1 className="text-xl font-bold tracking-tighter text-primary">GRIDIRON TRAINING</h1>
               </div>
-              {isCoach && (
-                <button
-                  onClick={() => setShowRoleSelect(true)}
-                  className="text-xs text-muted-foreground hover:text-primary transition-colors uppercase tracking-widest"
-                >
-                  Switch Role
-                </button>
-              )}
             </header>
           )}
           <main className="flex-1 overflow-y-auto">
-            <Router onSwitchRole={() => setShowRoleSelect(true)} />
+            <AthleteRouter />
           </main>
         </div>
       </div>
