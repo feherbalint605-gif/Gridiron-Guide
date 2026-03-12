@@ -9,26 +9,32 @@ import PositionDetail from "@/pages/PositionDetail";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { useAuth } from "@/hooks/use-auth";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import RoleSelection from "@/components/RoleSelection";
 
-function Router() {
+function CoachPortal({ onSwitchRole }: { onSwitchRole: () => void }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="text-center space-y-6">
+        <h1 className="text-4xl font-display font-black text-accent mb-4 italic">COACH PORTAL</h1>
+        <p className="text-muted-foreground uppercase tracking-widest">System offline. Content coming soon.</p>
+        <button
+          onClick={onSwitchRole}
+          className="mt-6 px-6 py-2 border border-primary/40 text-primary text-sm uppercase tracking-widest rounded hover:bg-primary/10 transition-colors"
+        >
+          Switch to Athlete
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Router({ onSwitchRole }: { onSwitchRole: () => void }) {
   const { user } = useAuth();
-  
-  if (user && !user.role) {
-    return <RoleSelection onSelect={() => {}} />;
-  }
 
   if (user?.role === 'coach') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <h1 className="text-4xl font-display font-black text-accent mb-4 italic">COACH PORTAL</h1>
-          <p className="text-muted-foreground uppercase tracking-widest">System offline. Content coming soon.</p>
-        </div>
-      </div>
-    );
+    return <CoachPortal onSwitchRole={onSwitchRole} />;
   }
 
   return (
@@ -47,8 +53,9 @@ function Router() {
 }
 
 function App() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const { toast } = useToast();
+  const [showRoleSelect, setShowRoleSelect] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -71,26 +78,44 @@ function App() {
     );
   }
 
+  if (isAuthenticated && showRoleSelect) {
+    return (
+      <div className="dark">
+        <RoleSelection onSelect={() => setShowRoleSelect(false)} />
+      </div>
+    );
+  }
+
   const style = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
   };
 
+  const isCoach = user?.role === 'coach';
+
   return (
     <SidebarProvider style={style as React.CSSProperties}>
       <div className="flex h-screen w-full bg-background text-foreground dark">
-        {isAuthenticated && <AppSidebar />}
+        {isAuthenticated && !isCoach && <AppSidebar onSwitchRole={() => setShowRoleSelect(true)} />}
         <div className="flex flex-col flex-1 overflow-hidden">
           {isAuthenticated && (
             <header className="flex items-center justify-between p-4 border-b border-border bg-card/50 backdrop-blur-sm">
               <div className="flex items-center gap-4">
-                <SidebarTrigger data-testid="button-sidebar-toggle" />
+                {!isCoach && <SidebarTrigger data-testid="button-sidebar-toggle" />}
                 <h1 className="text-xl font-bold tracking-tighter text-primary">GRIDIRON TRAINING</h1>
               </div>
+              {isCoach && (
+                <button
+                  onClick={() => setShowRoleSelect(true)}
+                  className="text-xs text-muted-foreground hover:text-primary transition-colors uppercase tracking-widest"
+                >
+                  Switch Role
+                </button>
+              )}
             </header>
           )}
           <main className="flex-1 overflow-y-auto">
-            <Router />
+            <Router onSwitchRole={() => setShowRoleSelect(true)} />
           </main>
         </div>
       </div>

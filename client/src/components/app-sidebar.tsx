@@ -6,11 +6,9 @@ import { Home, Trophy, User, Video, BookOpen } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 
-export function AppSidebar() {
+export function AppSidebar({ onSwitchRole }: { onSwitchRole: () => void }) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
-  
-  if (user?.role === 'coach') return null;
   
   const { data: positions } = useQuery<Position[]>({
     queryKey: ["/api/positions"],
@@ -45,7 +43,7 @@ export function AppSidebar() {
       </SidebarContent>
       
       <div className="mt-auto p-4 border-t border-border bg-card/50">
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-3 mb-3">
           <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
             <User className="w-4 h-4 text-primary" />
           </div>
@@ -54,6 +52,14 @@ export function AppSidebar() {
             <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
           </div>
         </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start text-muted-foreground hover:text-primary mb-1"
+          onClick={onSwitchRole}
+        >
+          Switch Role
+        </Button>
         <Button 
           variant="outline" 
           size="sm" 
