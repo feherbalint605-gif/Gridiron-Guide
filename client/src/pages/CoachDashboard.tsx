@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, ChevronDown, ChevronUp, Dumbbell, Utensils, BarChart3, User, Save, MessageSquare } from "lucide-react";
+import { Users, ChevronDown, ChevronUp, Dumbbell, Utensils, BarChart3, User, Save, MessageSquare, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -92,10 +92,54 @@ function AthleteCard({ athlete }: { athlete: UserType }) {
     },
   });
 
+  const withBase = (prev: any) => JSON.parse(JSON.stringify(prev ?? planData ?? {}));
+
   const updateExercise = (wIdx: number, eIdx: number, field: string, value: string) => {
     setEditablePlan((prev: any) => {
-      const next = JSON.parse(JSON.stringify(prev));
+      const next = withBase(prev);
       next.workouts.gym[wIdx].exercises[eIdx][field] = value;
+      return next;
+    });
+  };
+
+  const addExercise = (wIdx: number) => {
+    setEditablePlan((prev: any) => {
+      const next = withBase(prev);
+      next.workouts.gym[wIdx].exercises.push({ name: "", sets: "3", reps: "10", weight: "" });
+      return next;
+    });
+  };
+
+  const removeExercise = (wIdx: number, eIdx: number) => {
+    setEditablePlan((prev: any) => {
+      const next = withBase(prev);
+      next.workouts.gym[wIdx].exercises.splice(eIdx, 1);
+      return next;
+    });
+  };
+
+  const updateWorkoutTitle = (wIdx: number, title: string) => {
+    setEditablePlan((prev: any) => {
+      const next = withBase(prev);
+      next.workouts.gym[wIdx].title = title;
+      return next;
+    });
+  };
+
+  const addWorkoutDay = () => {
+    setEditablePlan((prev: any) => {
+      const next = withBase(prev);
+      if (!next.workouts) next.workouts = {};
+      if (!next.workouts.gym) next.workouts.gym = [];
+      next.workouts.gym.push({ title: "Új edzésnap", exercises: [] });
+      return next;
+    });
+  };
+
+  const removeWorkoutDay = (wIdx: number) => {
+    setEditablePlan((prev: any) => {
+      const next = withBase(prev);
+      next.workouts.gym.splice(wIdx, 1);
       return next;
     });
   };
@@ -199,40 +243,79 @@ function AthleteCard({ athlete }: { athlete: UserType }) {
                     {/* ── WORKOUT TAB ── */}
                     {tab === "workout" && (
                       <div className="space-y-4">
-                        {plan.workouts?.gym?.map((workout: any, wIdx: number) => (
+                        {(editablePlan?.workouts?.gym ?? plan.workouts?.gym ?? []).map((workout: any, wIdx: number) => (
                           <div key={wIdx} className="bg-black/20 rounded-lg border border-border/30 overflow-hidden">
-                            <div className="bg-primary/10 px-3 py-2 border-b border-primary/20">
-                              <h4 className="font-bold text-primary text-xs uppercase tracking-widest">{workout.title}</h4>
+                            {/* Day header — editable title + delete day */}
+                            <div className="bg-primary/10 px-3 py-2 border-b border-primary/20 flex items-center gap-2">
+                              <Input
+                                className="h-7 flex-1 text-xs font-bold bg-transparent border-transparent hover:border-primary/30 focus:border-primary text-primary uppercase tracking-widest px-1"
+                                value={workout.title}
+                                onChange={e => updateWorkoutTitle(wIdx, e.target.value)}
+                              />
+                              <button
+                                onClick={() => removeWorkoutDay(wIdx)}
+                                className="p-1 rounded text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-colors shrink-0"
+                                title="Edzésnap törlése"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
                             </div>
-                            <div className="p-3 space-y-3">
+
+                            <div className="p-3 space-y-2">
                               {/* Header row */}
-                              <div className="grid grid-cols-5 gap-2 text-[10px] text-muted-foreground uppercase tracking-widest px-1">
-                                <span className="col-span-3">Gyakorlat</span>
+                              <div className="grid grid-cols-[1fr_52px_52px_28px] gap-2 text-[10px] text-muted-foreground uppercase tracking-widest px-1">
+                                <span>Gyakorlat</span>
                                 <span className="text-center">Szett</span>
                                 <span className="text-center">Ismétlés</span>
+                                <span />
                               </div>
+
                               {workout.exercises?.map((ex: any, eIdx: number) => (
-                                <div key={eIdx} className="grid grid-cols-5 gap-2 items-center">
+                                <div key={eIdx} className="grid grid-cols-[1fr_52px_52px_28px] gap-2 items-center">
                                   <Input
-                                    className="col-span-3 h-8 text-xs bg-black/40 border-border/30 focus:border-primary"
-                                    value={editablePlan?.workouts?.gym?.[wIdx]?.exercises?.[eIdx]?.name ?? ex.name}
+                                    className="h-8 text-xs bg-black/40 border-border/30 focus:border-primary"
+                                    value={ex.name}
                                     onChange={e => updateExercise(wIdx, eIdx, "name", e.target.value)}
+                                    placeholder="Gyakorlat neve..."
                                   />
                                   <Input
                                     className="h-8 text-xs bg-black/40 border-border/30 focus:border-primary text-center"
-                                    value={editablePlan?.workouts?.gym?.[wIdx]?.exercises?.[eIdx]?.sets ?? ex.sets}
+                                    value={ex.sets}
                                     onChange={e => updateExercise(wIdx, eIdx, "sets", e.target.value)}
                                   />
                                   <Input
                                     className="h-8 text-xs bg-black/40 border-border/30 focus:border-primary text-center"
-                                    value={editablePlan?.workouts?.gym?.[wIdx]?.exercises?.[eIdx]?.reps ?? ex.reps}
+                                    value={ex.reps}
                                     onChange={e => updateExercise(wIdx, eIdx, "reps", e.target.value)}
                                   />
+                                  <button
+                                    onClick={() => removeExercise(wIdx, eIdx)}
+                                    className="flex items-center justify-center w-7 h-7 rounded text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
                                 </div>
                               ))}
+
+                              {/* Add exercise */}
+                              <button
+                                onClick={() => addExercise(wIdx)}
+                                className="flex items-center gap-2 w-full mt-1 px-2 py-1.5 rounded border border-dashed border-primary/20 text-primary/50 hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-all text-xs"
+                              >
+                                <Plus className="w-3.5 h-3.5" /> Gyakorlat hozzáadása
+                              </button>
                             </div>
                           </div>
                         ))}
+
+                        {/* Add workout day */}
+                        <button
+                          onClick={addWorkoutDay}
+                          className="flex items-center justify-center gap-2 w-full py-3 rounded-lg border border-dashed border-primary/30 text-primary/60 hover:text-primary hover:border-primary/60 hover:bg-primary/5 transition-all text-sm font-bold"
+                        >
+                          <Plus className="w-4 h-4" /> Edzésnap hozzáadása
+                        </button>
+
                         <Button
                           onClick={() => savePlanMutation.mutate()}
                           disabled={savePlanMutation.isPending}
