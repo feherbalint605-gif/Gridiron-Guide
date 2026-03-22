@@ -2,7 +2,7 @@ import { useParams, Link } from "wouter";
 import { usePosition } from "@/hooks/use-positions";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Dumbbell, Utensils, Zap, Shield, Video, Plus, History, Save } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { WorkoutCard } from "@/components/WorkoutCard";
 import { DietCard } from "@/components/DietCard";
 import { cn } from "@/lib/utils";
@@ -23,6 +23,16 @@ export default function PositionDetail() {
     queryKey: [`/api/workout-logs/${id}`],
     enabled: !!id,
   });
+
+  // Save this position as the athlete's selected position when they visit
+  useEffect(() => {
+    if (id) {
+      apiRequest("POST", "/api/user/position", { positionId: id })
+        .then(() => queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] }))
+        .catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
     const mutation = useMutation({
       mutationFn: async (newLog: any) => {

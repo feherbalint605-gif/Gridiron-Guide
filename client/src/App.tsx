@@ -6,8 +6,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import PositionDetail from "@/pages/PositionDetail";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
-import { AppSidebar } from "@/components/app-sidebar"
+import CoachDashboard from "@/pages/CoachDashboard";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
 import { useAuth } from "@/hooks/use-auth";
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -56,8 +57,16 @@ function App() {
   }
 
   if (isAuthenticated && showRoleSelect) {
+    return <RoleSelection onSelect={() => setShowRoleSelect(false)} />;
+  }
+
+  const isCoach = user?.role === "coach";
+
+  if (isAuthenticated && isCoach) {
     return (
-      <RoleSelection onSelect={() => setShowRoleSelect(false)} />
+      <div className="dark bg-background min-h-screen text-foreground">
+        <CoachDashboard onSwitchRole={() => setShowRoleSelect(true)} />
+      </div>
     );
   }
 

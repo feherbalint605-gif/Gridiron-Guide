@@ -3,6 +3,10 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
+import { db } from "./db";
+import { users } from "@shared/models/auth";
+import { workoutLogs } from "@shared/schema";
+import { eq, and } from "drizzle-orm";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -46,6 +50,65 @@ export async function registerRoutes(
       .returning();
       
     res.json(updatedUser);
+  });
+
+  // Set athlete's selected position
+  app.post("/api/user/position", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const user = req.user as any;
+    const userId = user.claims?.sub;
+    if (!userId) return res.sendStatus(401);
+    const { positionId } = req.body;
+    const [updated] = await db.update(users).set({ selectedPositionId: positionId }).where(eq(users.id, userId)).returning();
+    res.json(updated);
+  });
+
+  // Athlete joins a coach
+  app.post("/api/user/join-coach", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const user = req.user as any;
+    const userId = user.claims?.sub;
+    if (!userId) return res.sendStatus(401);
+    const { coachId } = req.body;
+    const [updated] = await db.update(users).set({ coachId }).where(eq(users.id, userId)).returning();
+    res.json(updated);
+  });
+
+  // List all coaches (for athlete to pick from)
+  app.get("/api/coaches", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const coaches = await db.select().from(users).where(eq(users.role, "coach"));
+    res.json(coaches);
+  });
+
+  // Coach: get my athletes (with their position and logs summary)
+  app.get("/api/coach/athletes", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const user = req.user as any;
+    const userId = user.claims?.sub;
+    if (!userId) return res.sendStatus(401);
+    const athletes = await db.select().from(users).where(eq(users.coachId, userId));
+    res.json(athletes);
+  });
+
+  // Coach: get specific athlete's workout logs for a position
+  app.get("/api/coach/athletes/:athleteId/logs/:positionId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const user = req.user as any;
+    const coachId = user.claims?.sub;
+    if (!coachId) return res.sendStatus(401);
+
+    const { athleteId, positionId } = req.params;
+    // Verify this athlete belongs to this coach
+    const [athlete] = await db.select().from(users).where(and(eq(users.id, athleteId), eq(users.coachId, coachId)));
+    if (!athlete) return res.status(403).json({ message: "Athlete not found" });
+
+    // athlete's numeric user id for workout_logs table
+    const numericId = parseInt(String(athleteId).replace(/\D/g, "")) || 0;
+    const logs = await db.select().from(workoutLogs).where(
+      and(eq(workoutLogs.userId, numericId), eq(workoutLogs.positionId, positionId))
+    );
+    res.json(logs);
   });
 
   app.get("/api/workout-logs/:positionId", async (req, res) => {
