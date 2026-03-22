@@ -63,14 +63,36 @@ export async function registerRoutes(
     res.json(updated);
   });
 
-  // Athlete joins a coach
+  // Athlete joins a coach (by coachId or email)
   app.post("/api/user/join-coach", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const user = req.user as any;
     const userId = user.claims?.sub;
     if (!userId) return res.sendStatus(401);
-    const { coachId } = req.body;
-    const [updated] = await db.update(users).set({ coachId }).where(eq(users.id, userId)).returning();
+    const { coachId, email } = req.body;
+
+    let resolvedCoachId = coachId;
+
+    if (!resolvedCoachId && email) {
+      const [coach] = await db.select().from(users).where(eq(users.email, email.trim().toLowerCase()));
+      if (!coach) return res.status(404).json({ message: "Nem találtunk ilyen e-mail című edzőt." });
+      if (coach.role !== "coach") return res.status(400).json({ message: "Ez a felhasználó nem edző." });
+      resolvedCoachId = coach.id;
+    }
+
+    if (!resolvedCoachId) return res.status(400).json({ message: "Érvénytelen kérés." });
+
+    const [updated] = await db.update(users).set({ coachId: resolvedCoachId }).where(eq(users.id, userId)).returning();
+    res.json(updated);
+  });
+
+  // Athlete leaves their coach
+  app.post("/api/user/leave-coach", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const user = req.user as any;
+    const userId = user.claims?.sub;
+    if (!userId) return res.sendStatus(401);
+    const [updated] = await db.update(users).set({ coachId: null }).where(eq(users.id, userId)).returning();
     res.json(updated);
   });
 

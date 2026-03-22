@@ -6,32 +6,49 @@ import { Link, useLocation } from "wouter";
 import { Home, Video, BookOpen, User as UserIcon, UserCheck, ChevronDown } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 export function AppSidebar({ onSwitchRole }: { onSwitchRole: () => void }) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
+  const { toast } = useToast();
   const [showJoinCoach, setShowJoinCoach] = useState(false);
+  const [coachEmail, setCoachEmail] = useState("");
 
   const { data: positions } = useQuery<Position[]>({
     queryKey: ["/api/positions"],
   });
 
-  const { data: coaches } = useQuery<User[]>({
-    queryKey: ["/api/coaches"],
-    enabled: showJoinCoach || !!user?.coachId,
-  });
-
   const joinCoachMutation = useMutation({
-    mutationFn: async (coachId: string) => {
-      const res = await apiRequest("POST", "/api/user/join-coach", { coachId });
-      return res.json();
+    mutationFn: async (email: string) => {
+      const res = await apiRequest("POST", "/api/user/join-coach", { email });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Hiba történt.");
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       setShowJoinCoach(false);
+      setCoachEmail("");
+      toast({ title: "Sikeresen csatlakoztál az edzőhöz!" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Hiba", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const leaveCoachMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/user/leave-coach", {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      toast({ title: "Lecsatlakoztál az edzőtől." });
     },
   });
 
@@ -40,8 +57,6 @@ export function AppSidebar({ onSwitchRole }: { onSwitchRole: () => void }) {
     { title: "Film", url: "/film", icon: Video },
     { title: "Study", url: "/study", icon: BookOpen },
   ];
-
-  const currentCoach = coaches?.find(c => c.id === user?.coachId);
 
   return (
     <Sidebar>
@@ -69,15 +84,14 @@ export function AppSidebar({ onSwitchRole }: { onSwitchRole: () => void }) {
           <SidebarGroupLabel>Edzőm</SidebarGroupLabel>
           <SidebarGroupContent>
             <div className="px-2 space-y-2">
-              {user?.coachId && currentCoach ? (
+              {user?.coachId ? (
                 <div className="flex items-center gap-2 p-2 rounded-lg bg-primary/5 border border-primary/10">
                   <UserCheck className="w-4 h-4 text-primary shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-primary truncate">
-                      {[currentCoach.firstName, currentCoach.lastName].filter(Boolean).join(" ") || currentCoach.email}
-                    </p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-primary truncate">Csatlakozva</p>
                     <button
-                      onClick={() => joinCoachMutation.mutate("")}
+                      onClick={() => leaveCoachMutation.mutate()}
+                      disabled={leaveCoachMutation.isPending}
                       className="text-[10px] text-muted-foreground hover:text-destructive transition-colors"
                     >
                       Lecsatlakozás
@@ -85,38 +99,41 @@ export function AppSidebar({ onSwitchRole }: { onSwitchRole: () => void }) {
                   </div>
                 </div>
               ) : (
-                <button
-                  onClick={() => setShowJoinCoach(s => !s)}
-                  className="w-full flex items-center gap-2 p-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
-                >
-                  <UserIcon className="w-4 h-4" />
-                  <span>Csatlakozás edzőhöz</span>
-                  <ChevronDown className={cn("w-3 h-3 ml-auto transition-transform", showJoinCoach && "rotate-180")} />
-                </button>
-              )}
+                <>
+                  <button
+                    onClick={() => setShowJoinCoach(s => !s)}
+                    className="w-full flex items-center gap-2 p-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+                  >
+                    <UserIcon className="w-4 h-4" />
+                    <span>Csatlakozás edzőhöz</span>
+                    <ChevronDown className={cn("w-3 h-3 ml-auto transition-transform", showJoinCoach && "rotate-180")} />
+                  </button>
 
-              {showJoinCoach && !user?.coachId && (
-                <div className="space-y-1 pl-1">
-                  {!coaches ? (
-                    <p className="text-xs text-muted-foreground px-2">Töltés...</p>
-                  ) : coaches.length === 0 ? (
-                    <p className="text-xs text-muted-foreground px-2">Nincs elérhető edző.</p>
-                  ) : (
-                    coaches.map(coach => (
-                      <button
-                        key={coach.id}
-                        onClick={() => joinCoachMutation.mutate(coach.id)}
-                        disabled={joinCoachMutation.isPending}
-                        className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-primary/10 hover:text-primary transition-colors"
+                  {showJoinCoach && (
+                    <div className="space-y-2 px-1">
+                      <Input
+                        type="email"
+                        placeholder="Edző e-mail címe"
+                        value={coachEmail}
+                        onChange={e => setCoachEmail(e.target.value)}
+                        className="h-8 text-xs bg-black/40 border-primary/20 focus:border-primary"
+                        onKeyDown={e => {
+                          if (e.key === "Enter" && coachEmail.trim()) {
+                            joinCoachMutation.mutate(coachEmail.trim());
+                          }
+                        }}
+                      />
+                      <Button
+                        size="sm"
+                        className="w-full h-7 text-xs bg-primary text-black font-bold hover:bg-primary/80"
+                        disabled={!coachEmail.trim() || joinCoachMutation.isPending}
+                        onClick={() => joinCoachMutation.mutate(coachEmail.trim())}
                       >
-                        <p className="font-medium truncate">
-                          {[coach.firstName, coach.lastName].filter(Boolean).join(" ") || "Coach"}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate">{coach.email}</p>
-                      </button>
-                    ))
+                        {joinCoachMutation.isPending ? "Csatlakozás..." : "Csatlakozás"}
+                      </Button>
+                    </div>
                   )}
-                </div>
+                </>
               )}
             </div>
           </SidebarGroupContent>
