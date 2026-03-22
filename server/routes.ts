@@ -5,7 +5,7 @@ import { api } from "@shared/routes";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import { db } from "./db";
 import { users } from "@shared/models/auth";
-import { workoutLogs } from "@shared/schema";
+import { workoutLogs, athletePlanOverrides, coachComments } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 
 export async function registerRoutes(
@@ -23,12 +23,24 @@ export async function registerRoutes(
 
   app.get(api.positions.get.path, async (req, res) => {
     const id = req.params.id;
-    const details = await storage.getPositionDetails(id);
-    
-    if (!details) {
-      return res.status(404).json({ message: "Position not found" });
+
+    // If athlete has a coach, check for a custom plan override
+    if (req.isAuthenticated()) {
+      const user = req.user as any;
+      const athleteId = user.claims?.sub;
+      if (athleteId) {
+        const [dbUser] = await db.select().from(users).where(eq(users.id, athleteId));
+        if (dbUser?.coachId) {
+          const [override] = await db.select().from(athletePlanOverrides).where(
+            and(eq(athletePlanOverrides.coachId, dbUser.coachId), eq(athletePlanOverrides.athleteId, athleteId), eq(athletePlanOverrides.positionId, id))
+          );
+          if (override) return res.json(override.details);
+        }
+      }
     }
-    
+
+    const details = await storage.getPositionDetails(id);
+    if (!details) return res.status(404).json({ message: "Position not found" });
     res.json(details);
   });
 
@@ -111,6 +123,75 @@ export async function registerRoutes(
     if (!userId) return res.sendStatus(401);
     const athletes = await db.select().from(users).where(eq(users.coachId, userId));
     res.json(athletes);
+  });
+
+  // Coach: get plan for athlete (override or default)
+  app.get("/api/coach/athletes/:athleteId/plan/:positionId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const user = req.user as any;
+    const coachId = user.claims?.sub;
+    if (!coachId) return res.sendStatus(401);
+    const { athleteId, positionId } = req.params;
+
+    const [override] = await db.select().from(athletePlanOverrides).where(
+      and(eq(athletePlanOverrides.coachId, coachId), eq(athletePlanOverrides.athleteId, athleteId), eq(athletePlanOverrides.positionId, positionId))
+    );
+    if (override) return res.json(override.details);
+
+    const details = await storage.getPositionDetails(positionId);
+    if (!details) return res.status(404).json({ message: "Position not found" });
+    res.json(details);
+  });
+
+  // Coach: save plan override for athlete
+  app.post("/api/coach/athletes/:athleteId/plan/:positionId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const user = req.user as any;
+    const coachId = user.claims?.sub;
+    if (!coachId) return res.sendStatus(401);
+    const { athleteId, positionId } = req.params;
+    const details = req.body;
+
+    const [upserted] = await db.insert(athletePlanOverrides)
+      .values({ coachId, athleteId, positionId, details })
+      .onConflictDoUpdate({
+        target: [athletePlanOverrides.coachId, athletePlanOverrides.athleteId, athletePlanOverrides.positionId],
+        set: { details, updatedAt: new Date() }
+      })
+      .returning();
+    res.json(upserted);
+  });
+
+  // Coach: get comments for athlete's position
+  app.get("/api/coach/athletes/:athleteId/comments/:positionId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const user = req.user as any;
+    const coachId = user.claims?.sub;
+    if (!coachId) return res.sendStatus(401);
+    const { athleteId, positionId } = req.params;
+
+    const comments = await db.select().from(coachComments).where(
+      and(eq(coachComments.coachId, coachId), eq(coachComments.athleteId, athleteId), eq(coachComments.positionId, positionId))
+    );
+    res.json(comments);
+  });
+
+  // Coach: save/update a comment
+  app.post("/api/coach/comment", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const user = req.user as any;
+    const coachId = user.claims?.sub;
+    if (!coachId) return res.sendStatus(401);
+    const { athleteId, positionId, workoutTitle, exerciseName, comment } = req.body;
+
+    const [upserted] = await db.insert(coachComments)
+      .values({ coachId, athleteId, positionId, workoutTitle, exerciseName, comment })
+      .onConflictDoUpdate({
+        target: [coachComments.coachId, coachComments.athleteId, coachComments.positionId, coachComments.workoutTitle, coachComments.exerciseName],
+        set: { comment, updatedAt: new Date() }
+      })
+      .returning();
+    res.json(upserted);
   });
 
   // Coach: get specific athlete's workout logs for a position

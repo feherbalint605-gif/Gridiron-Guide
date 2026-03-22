@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, jsonb, timestamp, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -66,3 +66,27 @@ export const positionDetailsSchema = z.object({
 
 export type Position = typeof positions.$inferSelect;
 export type PositionDetails = z.infer<typeof positionDetailsSchema>;
+
+// Coach overrides a specific athlete's position plan
+export const athletePlanOverrides = pgTable("athlete_plan_overrides", {
+  id: serial("id").primaryKey(),
+  coachId: text("coach_id").notNull(),
+  athleteId: text("athlete_id").notNull(),
+  positionId: text("position_id").notNull(),
+  details: jsonb("details").$type<PositionDetails>().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => [unique().on(t.coachId, t.athleteId, t.positionId)]);
+
+// Coach comments on a specific exercise for a specific athlete
+export const coachComments = pgTable("coach_comments", {
+  id: serial("id").primaryKey(),
+  coachId: text("coach_id").notNull(),
+  athleteId: text("athlete_id").notNull(),
+  positionId: text("position_id").notNull(),
+  workoutTitle: text("workout_title").notNull(),
+  exerciseName: text("exercise_name").notNull(),
+  comment: text("comment").notNull().default(""),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => [unique().on(t.coachId, t.athleteId, t.positionId, t.workoutTitle, t.exerciseName)]);
+
+export type CoachComment = typeof coachComments.$inferSelect;
