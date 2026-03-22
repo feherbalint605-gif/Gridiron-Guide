@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, ChevronDown, ChevronUp, Dumbbell, Utensils, BarChart3, User, Save, MessageSquare, Plus, Trash2 } from "lucide-react";
+import { Users, ChevronDown, ChevronUp, Dumbbell, Utensils, BarChart3, User, Save, MessageSquare, Plus, Trash2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,17 +58,23 @@ function AthleteCard({ athlete }: { athlete: UserType }) {
     }
   }, [commentsData]);
 
-  // Reset editable plan when closed
+  // Reset editable plan when closed or when athlete switches position
   useEffect(() => {
     if (!open) {
       setEditablePlan(null);
     }
   }, [open]);
 
-  // Save plan mutation
+  useEffect(() => {
+    // When the athlete's position changes, reset so the new plan loads fresh
+    setEditablePlan(null);
+  }, [positionId]);
+
+  // Save plan mutation — pass the plan explicitly to avoid stale closure
   const savePlanMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", `/api/coach/athletes/${athlete.id}/plan/${positionId}`, editablePlan);
+    mutationFn: async (planToSave: any) => {
+      if (!planToSave) throw new Error("Nincs terv");
+      const res = await apiRequest("POST", `/api/coach/athletes/${athlete.id}/plan/${positionId}`, planToSave);
       if (!res.ok) throw new Error("Mentési hiba");
       return res.json();
     },
@@ -317,8 +323,8 @@ function AthleteCard({ athlete }: { athlete: UserType }) {
                         </button>
 
                         <Button
-                          onClick={() => savePlanMutation.mutate()}
-                          disabled={savePlanMutation.isPending}
+                          onClick={() => savePlanMutation.mutate(editablePlan ?? planData)}
+                          disabled={savePlanMutation.isPending || (!editablePlan && !planData)}
                           className="w-full bg-primary text-black font-bold hover:bg-primary/80"
                         >
                           <Save className="w-4 h-4 mr-2" />
@@ -373,8 +379,8 @@ function AthleteCard({ athlete }: { athlete: UserType }) {
                         ))}
 
                         <Button
-                          onClick={() => savePlanMutation.mutate()}
-                          disabled={savePlanMutation.isPending}
+                          onClick={() => savePlanMutation.mutate(editablePlan ?? planData)}
+                          disabled={savePlanMutation.isPending || (!editablePlan && !planData)}
                           className="w-full bg-primary text-black font-bold hover:bg-primary/80"
                         >
                           <Save className="w-4 h-4 mr-2" />
@@ -476,8 +482,9 @@ function AthleteCard({ athlete }: { athlete: UserType }) {
 }
 
 export default function CoachDashboard({ onSwitchRole }: { onSwitchRole: () => void }) {
-  const { data: athletes, isLoading } = useQuery<UserType[]>({
+  const { data: athletes, isLoading, refetch } = useQuery<UserType[]>({
     queryKey: ["/api/coach/athletes"],
+    refetchInterval: 15000,
   });
 
   return (
@@ -488,12 +495,21 @@ export default function CoachDashboard({ onSwitchRole }: { onSwitchRole: () => v
             <h1 className="text-4xl font-display font-black text-primary italic mb-1">COACH PORTAL</h1>
             <p className="text-muted-foreground uppercase tracking-widest text-sm">Játékosok áttekintése</p>
           </div>
-          <button
-            onClick={onSwitchRole}
-            className="text-xs text-muted-foreground hover:text-primary transition-colors uppercase tracking-widest border border-border rounded px-3 py-2"
-          >
-            Szerepkör váltás
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => refetch()}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors uppercase tracking-widest border border-border rounded px-3 py-2"
+              title="Frissítés"
+            >
+              <RefreshCw className="w-3.5 h-3.5" /> Frissítés
+            </button>
+            <button
+              onClick={onSwitchRole}
+              className="text-xs text-muted-foreground hover:text-primary transition-colors uppercase tracking-widest border border-border rounded px-3 py-2"
+            >
+              Szerepkör váltás
+            </button>
+          </div>
         </div>
 
         {isLoading ? (
