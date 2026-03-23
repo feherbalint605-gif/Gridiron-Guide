@@ -26,6 +26,11 @@ export default function PlaybookEditor() {
   const [routePts, setRoutePts] = useState<[number, number][] | null>(null);
   const [mousePos, setMousePos] = useState<[number, number] | null>(null);
   const [showRouteMenu, setShowRouteMenu] = useState<{ x: number; y: number } | null>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [straightMode, setStraightMode] = useState(false);
+  const [straightAnchor, setStraightAnchor] = useState<[number, number] | null>(null);
+  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastMoveRef = useRef<{ x: number; y: number; time: number } | null>(null);
 
   const { data: plays = [] } = useQuery<SavedPlay[]>({ queryKey: ['/api/playbook'] });
 
@@ -157,6 +162,9 @@ export default function PlaybookEditor() {
   const startCustomRoute = () => {
     setTool('route');
     setRoutePts(null);
+    setIsDrawing(false);
+    setStraightMode(false);
+    setStraightAnchor(null);
     setShowRouteMenu(null);
   };
 
@@ -166,14 +174,51 @@ export default function PlaybookEditor() {
     setShowRouteMenu(null);
   };
 
+  const clearHoldTimer = () => {
+    if (holdTimerRef.current) { clearTimeout(holdTimerRef.current); holdTimerRef.current = null; }
+  };
+
+  const simplifyPoints = (pts: [number, number][], tolerance = 4): [number, number][] => {
+    if (pts.length <= 2) return pts;
+    const result: [number, number][] = [pts[0]];
+    for (let i = 1; i < pts.length - 1; i++) {
+      const prev = result[result.length - 1];
+      const dx = pts[i][0] - prev[0];
+      const dy = pts[i][1] - prev[1];
+      if (Math.sqrt(dx * dx + dy * dy) >= tolerance) {
+        result.push(pts[i]);
+      }
+    }
+    result.push(pts[pts.length - 1]);
+    return result;
+  };
+
   const finishRoute = () => {
     if (!selectedId || !routePts || routePts.length === 0) return;
+    const simplified = simplifyPoints(routePts);
     setPlay(p => ({
       ...p,
-      routes: [...p.routes.filter(r => r.playerId !== selectedId), { playerId: selectedId, points: routePts }],
+      routes: [...p.routes.filter(r => r.playerId !== selectedId), { playerId: selectedId, points: simplified }],
     }));
     setRoutePts(null);
+    setIsDrawing(false);
+    setStraightMode(false);
+    setStraightAnchor(null);
+    clearHoldTimer();
     setTool('select');
+  };
+
+  const startHoldDetection = (x: number, y: number) => {
+    clearHoldTimer();
+    lastMoveRef.current = { x, y, time: Date.now() };
+    holdTimerRef.current = setTimeout(() => {
+      setStraightMode(true);
+      setRoutePts(prev => {
+        if (!prev || prev.length === 0) return prev;
+        setStraightAnchor(prev[prev.length - 1]);
+        return prev;
+      });
+    }, 400);
   };
 
   const onSvgPointerDown = (e: React.PointerEvent) => {
@@ -182,7 +227,12 @@ export default function PlaybookEditor() {
       setSelectedId(null);
       setShowRouteMenu(null);
     } else if (tool === 'route' && selectedId) {
-      setRoutePts(prev => prev ? [...prev, [x, y]] : [[x, y]]);
+      setIsDrawing(true);
+      setStraightMode(false);
+      setStraightAnchor(null);
+      setRoutePts([[x, y]]);
+      startHoldDetection(x, y);
+      (e.currentTarget as SVGElement).setPointerCapture(e.pointerId);
     }
   };
 
@@ -196,6 +246,47 @@ export default function PlaybookEditor() {
           pl.id === dragging ? { ...pl, x: clamp(x, 12, W - 12), y: clamp(y, 12, H - 12) } : pl
         ),
       }));
+    }
+    if (isDrawing && tool === 'route' && selectedId) {
+      const last = lastMoveRef.current;
+      if (last) {
+        const dx = x - last.x;
+        const dy = y - last.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 3) {
+          clearHoldTimer();
+          if (straightMode) {
+            setStraightMode(false);
+            setStraightAnchor(null);
+          }
+          startHoldDetection(x, y);
+        }
+      }
+      if (straightMode && straightAnchor) {
+        setRoutePts(prev => {
+          if (!prev) return prev;
+          const anchorIdx = prev.findIndex(p => p[0] === straightAnchor[0] && p[1] === straightAnchor[1]);
+          if (anchorIdx >= 0) {
+            return [...prev.slice(0, anchorIdx + 1), [x, y]];
+          }
+          return [...prev, [x, y]];
+        });
+      } else {
+        setRoutePts(prev => prev ? [...prev, [x, y]] : [[x, y]]);
+      }
+    }
+  };
+
+  const onSvgPointerUp = () => {
+    setDragging(null);
+    if (isDrawing && routePts && routePts.length > 1) {
+      finishRoute();
+    } else if (isDrawing) {
+      setIsDrawing(false);
+      setRoutePts(null);
+      setStraightMode(false);
+      setStraightAnchor(null);
+      clearHoldTimer();
     }
   };
 
@@ -387,8 +478,8 @@ export default function PlaybookEditor() {
             style={{ background: '#0a0a0f', touchAction: 'none' }}
             onPointerDown={onSvgPointerDown}
             onPointerMove={onSvgPointerMove}
-            onPointerUp={() => setDragging(null)}
-            onPointerLeave={() => setMousePos(null)}
+            onPointerUp={onSvgPointerUp}
+            onPointerLeave={() => { setMousePos(null); if (isDrawing) onSvgPointerUp(); }}
           >
             {(() => {
               const ezY = yToYard(0);
@@ -455,18 +546,22 @@ export default function PlaybookEditor() {
               return renderRoute(route, player);
             })}
 
-            {tool === 'route' && selectedId && mousePos && (() => {
+            {tool === 'route' && selectedId && routePts && routePts.length > 0 && (() => {
               const player = play.players.find(p => p.id === selectedId);
               if (!player) return null;
-              const pts: [number, number][] = routePts
-                ? [[player.x, player.y], ...routePts, mousePos]
-                : [[player.x, player.y], mousePos];
-              if (pts.length < 2) return null;
-              const d = 'M ' + pts.map(([x, y]) => `${x} ${y}`).join(' L ');
+              const allPts: [number, number][] = [[player.x, player.y], ...routePts];
+              if (allPts.length < 2) return null;
+              const d = 'M ' + allPts.map(([x, y]) => `${x} ${y}`).join(' L ');
               return (
-                <path d={d} fill="none" stroke={PLAYER_CFG[player.type].color}
-                  strokeWidth={2} strokeDasharray="6 3" strokeLinejoin="round"
-                  strokeLinecap="round" opacity={0.55} />
+                <g>
+                  <path d={d} fill="none" stroke={PLAYER_CFG[player.type].color}
+                    strokeWidth={2} strokeDasharray="6 3" strokeLinejoin="round"
+                    strokeLinecap="round" opacity={0.55} />
+                  {straightMode && straightAnchor && (
+                    <circle cx={straightAnchor[0]} cy={straightAnchor[1]} r={4}
+                      fill="#22d3ee" opacity={0.8} />
+                  )}
+                </g>
               );
             })()}
 
@@ -503,21 +598,24 @@ export default function PlaybookEditor() {
 
           {tool === 'route' && selectedId && (
             <div className="absolute top-2 right-2 flex items-center gap-2">
-              {routePts && routePts.length > 0 ? (
-                <>
-                  <button onClick={finishRoute} data-testid="button-finish-route"
-                    className="flex items-center gap-1 px-2 py-1 bg-cyan-500 text-black text-xs font-bold rounded shadow">
-                    <Check className="w-3 h-3" /> Kész
-                  </button>
-                  <button onClick={() => setRoutePts(null)}
-                    className="flex items-center gap-1 px-2 py-1 bg-black/80 text-red-400 text-xs font-bold rounded border border-red-400/30">
-                    <X className="w-3 h-3" /> Mégse
-                  </button>
-                </>
+              {isDrawing && straightMode ? (
+                <div className="px-2 py-1 bg-cyan-500/20 text-cyan-300 text-[10px] rounded border border-cyan-500/30 font-bold">
+                  Egyenes mód — húzd a végponthoz
+                </div>
+              ) : isDrawing ? (
+                <div className="px-2 py-1 bg-black/80 text-cyan-400/60 text-[10px] rounded border border-cyan-500/20">
+                  Rajzolás... tartsd lenyomva = egyenes
+                </div>
               ) : (
                 <div className="px-2 py-1 bg-black/80 text-cyan-400/60 text-[10px] rounded border border-cyan-500/20">
-                  Kattints a mezőre a route rajzolásához
+                  Nyomj a mezőre és húzd a route-ot
                 </div>
+              )}
+              {!isDrawing && (
+                <button onClick={() => { setTool('select'); setRoutePts(null); }}
+                  className="flex items-center gap-1 px-2 py-1 bg-black/80 text-red-400 text-xs font-bold rounded border border-red-400/30">
+                  <X className="w-3 h-3" /> Mégse
+                </button>
               )}
             </div>
           )}
