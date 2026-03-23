@@ -74,15 +74,18 @@ export default function PlaybookEditor() {
     return () => document.removeEventListener('mousedown', h);
   }, [showRouteMenu]);
 
+  const viewMinY = play.losY - H / 2;
+
   const getSvgXY = useCallback((e: React.MouseEvent | React.PointerEvent): [number, number] => {
     const svg = svgRef.current;
     if (!svg) return [0, 0];
     const r = svg.getBoundingClientRect();
+    const vMinY = play.losY - H / 2;
     return [
       clamp(((e.clientX - r.left) / r.width) * W, 0, W),
-      clamp(((e.clientY - r.top) / r.height) * H, 0, H),
+      clamp(vMinY + ((e.clientY - r.top) / r.height) * H, vMinY, vMinY + H),
     ];
-  }, []);
+  }, [play.losY]);
 
   const getScreenXY = useCallback((svgX: number, svgY: number): { x: number; y: number } => {
     const svg = svgRef.current;
@@ -90,11 +93,12 @@ export default function PlaybookEditor() {
     if (!svg || !container) return { x: 0, y: 0 };
     const svgRect = svg.getBoundingClientRect();
     const containerRect = container.getBoundingClientRect();
+    const vMinY = play.losY - H / 2;
     return {
       x: svgRect.left - containerRect.left + (svgX / W) * svgRect.width,
-      y: svgRect.top - containerRect.top + (svgY / H) * svgRect.height,
+      y: svgRect.top - containerRect.top + ((svgY - vMinY) / H) * svgRect.height,
     };
-  }, []);
+  }, [play.losY]);
 
   const loadPlay = (p: SavedPlay) => {
     const data = JSON.parse(JSON.stringify(p.data)) as PlayData;
@@ -377,7 +381,7 @@ export default function PlaybookEditor() {
         <div className="relative" ref={containerRef}>
           <svg
             ref={svgRef}
-            viewBox={`0 0 ${W} ${H}`}
+            viewBox={`0 ${viewMinY} ${W} ${H}`}
             className={cn("w-full rounded-xl border border-cyan-500/20 block select-none",
               tool === 'route' ? 'cursor-crosshair' : 'cursor-default')}
             style={{ background: '#0a0a0f', touchAction: 'none' }}
@@ -386,19 +390,23 @@ export default function PlaybookEditor() {
             onPointerUp={() => setDragging(null)}
             onPointerLeave={() => setMousePos(null)}
           >
-            {yToYard(0) >= 0 && yToYard(0) <= H && (
-              <g>
-                <rect x={0} y={yToYard(0) - 2} width={W} height={20} fill="#22d3ee08" />
-                <text x={W / 2} y={yToYard(0) + 10} fill="#22d3ee" fontSize={10} fontFamily="monospace" textAnchor="middle" opacity={0.3} fontWeight="bold">
-                  SAJÁT ENDZONE
-                </text>
-              </g>
-            )}
+            {(() => {
+              const ezY = yToYard(0);
+              if (ezY >= viewMinY && ezY <= viewMinY + H) return (
+                <g>
+                  <rect x={0} y={ezY - 2} width={W} height={20} fill="#22d3ee08" />
+                  <text x={W / 2} y={ezY + 10} fill="#22d3ee" fontSize={10} fontFamily="monospace" textAnchor="middle" opacity={0.3} fontWeight="bold">
+                    SAJÁT ENDZONE
+                  </text>
+                </g>
+              );
+              return null;
+            })()}
 
-            {Array.from({ length: 51 }, (_, i) => {
+            {Array.from({ length: 101 }, (_, i) => {
               const yd = i;
               const lineY = yToYard(yd);
-              if (lineY < 0 || lineY > H) return null;
+              if (lineY < viewMinY || lineY > viewMinY + H) return null;
               const isLos = Math.abs(lineY - losY) < 1;
               const is5 = yd % 5 === 0;
               const is10 = yd % 10 === 0;
@@ -438,8 +446,8 @@ export default function PlaybookEditor() {
               LOS {Math.round(yardFromY(losY))}
             </text>
 
-            <line x1={5} y1={0} x2={5} y2={H} stroke="#22d3ee" strokeWidth={2} opacity={0.15} />
-            <line x1={W - 5} y1={0} x2={W - 5} y2={H} stroke="#22d3ee" strokeWidth={2} opacity={0.15} />
+            <line x1={5} y1={viewMinY} x2={5} y2={viewMinY + H} stroke="#22d3ee" strokeWidth={2} opacity={0.15} />
+            <line x1={W - 5} y1={viewMinY} x2={W - 5} y2={viewMinY + H} stroke="#22d3ee" strokeWidth={2} opacity={0.15} />
 
             {play.routes.map(route => {
               const player = play.players.find(p => p.id === route.playerId);
