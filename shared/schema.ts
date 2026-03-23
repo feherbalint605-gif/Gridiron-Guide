@@ -32,13 +32,14 @@ export type InsertWorkoutLog = z.infer<typeof insertWorkoutLogSchema>;
 
 // JSON structures for the complex data
 export const workoutSchema = z.object({
-  type: z.enum(["strength", "agility", "technique"]),
+  type: z.enum(["strength", "agility", "technique"]).optional(),
   title: z.string(),
   exercises: z.array(z.object({
     name: z.string(),
     sets: z.string(),
     reps: z.string(),
-    notes: z.string().optional()
+    notes: z.string().optional(),
+    weight: z.string().optional()
   }))
 });
 

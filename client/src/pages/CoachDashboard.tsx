@@ -111,7 +111,7 @@ function AthleteCard({ athlete }: { athlete: UserType }) {
   const addExercise = (wIdx: number) => {
     setEditablePlan((prev: any) => {
       const next = withBase(prev);
-      next.workouts.gym[wIdx].exercises.push({ name: "", sets: "3", reps: "10", weight: "" });
+      next.workouts.gym[wIdx].exercises.push({ name: "", sets: "3", reps: "10" });
       return next;
     });
   };
@@ -137,7 +137,7 @@ function AthleteCard({ athlete }: { athlete: UserType }) {
       const next = withBase(prev);
       if (!next.workouts) next.workouts = {};
       if (!next.workouts.gym) next.workouts.gym = [];
-      next.workouts.gym.push({ title: "Új edzésnap", exercises: [] });
+      next.workouts.gym.push({ type: "strength", title: "Új edzésnap", exercises: [] });
       return next;
     });
   };
