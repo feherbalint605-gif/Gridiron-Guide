@@ -1,7 +1,7 @@
 import { useParams, Link } from "wouter";
 import { usePosition } from "@/hooks/use-positions";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Dumbbell, Utensils, Zap, Shield, Video, Plus, History, Save } from "lucide-react";
+import { ArrowLeft, Dumbbell, Utensils, Zap, Shield, Video, Plus, History, Save, MessageSquare } from "lucide-react";
 import { useState, useEffect } from "react";
 import { WorkoutCard } from "@/components/WorkoutCard";
 import { DietCard } from "@/components/DietCard";
@@ -21,6 +21,11 @@ export default function PositionDetail() {
 
   const { data: logs } = useQuery<any[]>({
     queryKey: [`/api/workout-logs/${id}`],
+    enabled: !!id,
+  });
+
+  const { data: coachComments } = useQuery<any[]>({
+    queryKey: [`/api/my-coach-comments/${id}`],
     enabled: !!id,
   });
 
@@ -238,77 +243,95 @@ export default function PositionDetail() {
                         <h4 className="font-bold text-primary uppercase text-sm tracking-widest">{workout.title}</h4>
                       </div>
                       <div className="p-4 space-y-4">
-                        {workout.exercises.map((ex, exIdx) => (
-                          <div key={exIdx} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center border-b border-border/50 pb-4 last:border-0 last:pb-0">
-                            <div className="md:col-span-1">
-                              <p className="font-bold text-foreground">{ex.name}</p>
-                              <p className="text-xs text-muted-foreground">{ex.sets} sets x {ex.reps} reps</p>
-                            </div>
-                            <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              {Array.from({ length: parseInt(ex.sets) || 1 }).map((_, sIdx) => {
-                                const log = logs?.find(l => 
-                                  l.week === selectedWeek && 
-                                  l.workoutTitle === workout.title && 
-                                  l.exerciseName === ex.name && 
-                                  l.setIndex === sIdx
-                                );
-                                return (
-                                  <div key={`${selectedWeek}-${sIdx}`} className="flex gap-2 items-center bg-black/20 p-2 rounded-lg border border-border/30">
-                                    <span className="text-[10px] font-mono text-muted-foreground w-8">SET {sIdx + 1}</span>
-                                    <div className="relative flex-1">
-                                      <Input
-                                        key={`weight-${selectedWeek}-${sIdx}-${log?.id || 'new'}`}
-                                        type="number"
-                                        placeholder="lbs"
-                                        defaultValue={log?.weight ?? ""}
-                                        className="bg-black/50 border-primary/20 h-8 text-xs focus:border-primary pr-6"
-                                        onBlur={(e) => {
-                                          const val = parseInt(e.target.value);
-                                          if (!isNaN(val) && val !== (log?.weight || 0)) {
-                                            mutation.mutate({
-                                              positionId: id,
-                                              week: selectedWeek,
-                                              workoutTitle: workout.title,
-                                              exerciseName: ex.name,
-                                              setIndex: sIdx,
-                                              weight: val,
-                                              reps: log?.reps || 0 // Do not auto-fill from exercise default
-                                            });
-                                          }
-                                        }}
-                                      />
-                                      <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[8px] text-muted-foreground pointer-events-none uppercase">lbs</span>
-                                    </div>
-                                    <div className="relative flex-1">
-                                      <Input
-                                        key={`reps-${selectedWeek}-${sIdx}-${log?.id || 'new'}`}
-                                        type="number"
-                                        placeholder="reps"
-                                        defaultValue={log?.reps ?? ""}
-                                        className="bg-black/50 border-accent/20 h-8 text-xs focus:border-accent pr-6"
-                                        onBlur={(e) => {
-                                          const val = parseInt(e.target.value);
-                                          if (!isNaN(val) && val !== (log?.reps || 0)) {
-                                            mutation.mutate({
-                                              positionId: id,
-                                              week: selectedWeek,
-                                              workoutTitle: workout.title,
-                                              exerciseName: ex.name,
-                                              setIndex: sIdx,
-                                              weight: log?.weight || 0,
-                                              reps: val
-                                            });
-                                          }
-                                        }}
-                                      />
-                                      <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[8px] text-muted-foreground pointer-events-none uppercase">reps</span>
-                                    </div>
+                        {workout.exercises.map((ex, exIdx) => {
+                          const coachComment = coachComments?.find(
+                            c => c.workoutTitle === workout.title && c.exerciseName === ex.name
+                          );
+                          return (
+                            <div key={exIdx} className="border-b border-border/50 pb-4 last:border-0 last:pb-0 space-y-3">
+                              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
+                                <div className="md:col-span-1">
+                                  <p className="font-bold text-foreground">{ex.name}</p>
+                                  <p className="text-xs text-muted-foreground">{ex.sets} sets x {ex.reps} reps</p>
+                                </div>
+                                <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  {Array.from({ length: parseInt(ex.sets) || 1 }).map((_, sIdx) => {
+                                    const log = logs?.find(l =>
+                                      l.week === selectedWeek &&
+                                      l.workoutTitle === workout.title &&
+                                      l.exerciseName === ex.name &&
+                                      l.setIndex === sIdx
+                                    );
+                                    return (
+                                      <div key={`${selectedWeek}-${sIdx}`} className="flex gap-2 items-center bg-black/20 p-2 rounded-lg border border-border/30">
+                                        <span className="text-[10px] font-mono text-muted-foreground w-8">SET {sIdx + 1}</span>
+                                        <div className="relative flex-1">
+                                          <Input
+                                            key={`weight-${selectedWeek}-${sIdx}-${log?.id || 'new'}`}
+                                            type="number"
+                                            placeholder="lbs"
+                                            defaultValue={log?.weight ?? ""}
+                                            className="bg-black/50 border-primary/20 h-8 text-xs focus:border-primary pr-6"
+                                            onBlur={(e) => {
+                                              const val = parseInt(e.target.value);
+                                              if (!isNaN(val) && val !== (log?.weight || 0)) {
+                                                mutation.mutate({
+                                                  positionId: id,
+                                                  week: selectedWeek,
+                                                  workoutTitle: workout.title,
+                                                  exerciseName: ex.name,
+                                                  setIndex: sIdx,
+                                                  weight: val,
+                                                  reps: log?.reps || 0
+                                                });
+                                              }
+                                            }}
+                                          />
+                                          <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[8px] text-muted-foreground pointer-events-none uppercase">lbs</span>
+                                        </div>
+                                        <div className="relative flex-1">
+                                          <Input
+                                            key={`reps-${selectedWeek}-${sIdx}-${log?.id || 'new'}`}
+                                            type="number"
+                                            placeholder="reps"
+                                            defaultValue={log?.reps ?? ""}
+                                            className="bg-black/50 border-accent/20 h-8 text-xs focus:border-accent pr-6"
+                                            onBlur={(e) => {
+                                              const val = parseInt(e.target.value);
+                                              if (!isNaN(val) && val !== (log?.reps || 0)) {
+                                                mutation.mutate({
+                                                  positionId: id,
+                                                  week: selectedWeek,
+                                                  workoutTitle: workout.title,
+                                                  exerciseName: ex.name,
+                                                  setIndex: sIdx,
+                                                  weight: log?.weight || 0,
+                                                  reps: val
+                                                });
+                                              }
+                                            }}
+                                          />
+                                          <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[8px] text-muted-foreground pointer-events-none uppercase">reps</span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+
+                              {/* Coach comment */}
+                              {coachComment?.comment && (
+                                <div className="flex items-start gap-2 bg-primary/5 border border-primary/20 rounded-lg px-3 py-2">
+                                  <MessageSquare className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
+                                  <div>
+                                    <p className="text-[10px] font-mono text-primary uppercase tracking-widest mb-0.5">Edző komment</p>
+                                    <p className="text-sm text-foreground/90 leading-snug">{coachComment.comment}</p>
                                   </div>
-                                );
-                              })}
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   ))}

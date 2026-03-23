@@ -214,6 +214,27 @@ export async function registerRoutes(
     res.json(logs);
   });
 
+  // Athlete: get their coach's comments for a position
+  app.get("/api/my-coach-comments/:positionId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const user = req.user as any;
+    const athleteId = user.claims?.sub;
+    if (!athleteId) return res.sendStatus(401);
+
+    // Look up which coach this athlete belongs to
+    const [dbUser] = await db.select().from(users).where(eq(users.id, athleteId));
+    if (!dbUser?.coachId) return res.json([]);
+
+    const comments = await db.select().from(coachComments).where(
+      and(
+        eq(coachComments.coachId, dbUser.coachId),
+        eq(coachComments.athleteId, athleteId),
+        eq(coachComments.positionId, req.params.positionId)
+      )
+    );
+    res.json(comments);
+  });
+
   app.get("/api/workout-logs/:positionId", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const user = req.user as any;
