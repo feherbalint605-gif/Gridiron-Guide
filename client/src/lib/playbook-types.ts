@@ -69,8 +69,8 @@ export function yToYard(yd: number): number {
 }
 
 export const LOS_OPTIONS: { label: string; value: number }[] = [];
-for (let yd = 5; yd <= 45; yd += 5) {
-  LOS_OPTIONS.push({ label: `Saját ${yd}`, value: yToYard(yd) });
+for (let yd = 5; yd <= 95; yd += 5) {
+  LOS_OPTIONS.push({ label: `${yd} yd`, value: yToYard(yd) });
 }
 
 export function snapLosToOption(losY: number): number {

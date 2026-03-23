@@ -336,7 +336,24 @@ export default function PlaybookEditor() {
             <span className="text-[10px] text-cyan-400/50 uppercase">LOS:</span>
             <select
               value={losY}
-              onChange={e => setPlay(p => ({ ...p, losY: Number(e.target.value) }))}
+              onChange={e => {
+                const newLosY = Number(e.target.value);
+                setPlay(p => {
+                  const oldLosY = p.losY;
+                  const dy = newLosY - oldLosY;
+                  return {
+                    ...p,
+                    losY: newLosY,
+                    players: p.players.map(pl =>
+                      OL_TYPES.includes(pl.type) ? { ...pl, y: newLosY } : { ...pl, y: pl.y + dy }
+                    ),
+                    routes: p.routes.map(r => ({
+                      ...r,
+                      points: r.points.map(([x, y]) => [x, y + dy] as [number, number]),
+                    })),
+                  };
+                });
+              }}
               className="bg-black/60 border border-cyan-500/30 text-cyan-300 text-xs rounded px-2 py-1 focus:outline-none focus:border-cyan-400"
               data-testid="select-los"
             >
