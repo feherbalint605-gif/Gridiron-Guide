@@ -2,7 +2,7 @@
 
 ## Overview
 
-Football Training App — a web application for American football players to access position-specific workout and diet plans. Users select a position (QB, WR, RB, LB, DB, OL, DL) and view detailed gym/field workouts, diet plans with protein targets, and meal breakdowns. The app features a dark mode design with neon blue/cyan accents and a sporty, modern interface.
+Football Training App — a web application for American football players to access position-specific workout and diet plans. Users select a position (QB, WR, RB, LB, DB, OL, DL) and view detailed gym/field workouts, diet plans with protein targets, and meal breakdowns. Coaches can manage athlete plans, add comments, and design offense playbook plays with an SVG-based play designer. Athletes see coach-customized plans and can view the coach's playbook. The app features a dark mode design with neon blue/cyan accents and a sporty, modern interface.
 
 ## User Preferences
 

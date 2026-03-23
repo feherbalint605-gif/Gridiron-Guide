@@ -1,0 +1,177 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { ChevronLeft, ChevronRight, BookOpen } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  W, H, YARD, PLAYER_CFG, OL_TYPES,
+  PlayPlayer, PlayRoute, PlayData, SavedPlay, makeArrowPolygon
+} from "@/lib/playbook-types";
+
+function FieldSVG({ play }: { play: PlayData }) {
+  const losY = play.losY;
+
+  const renderRoute = (route: PlayRoute, player: PlayPlayer) => {
+    const cfg = PLAYER_CFG[player.type];
+    const pts: [number, number][] = [[player.x, player.y], ...route.points];
+    if (pts.length < 2) return null;
+    const d = 'M ' + pts.map(([x, y]) => `${x} ${y}`).join(' L ');
+    const from = pts[pts.length - 2];
+    const to = pts[pts.length - 1];
+    const arrow = makeArrowPolygon(from, to);
+    return (
+      <g key={route.playerId}>
+        <path d={d} fill="none" stroke={cfg.color} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+        {arrow && <polygon points={arrow} fill={cfg.color} />}
+      </g>
+    );
+  };
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full rounded-xl border border-border" style={{ background: '#1a4d1a' }}>
+      {Array.from({ length: 13 }, (_, i) => i - 6).map(offset => {
+        const lineY = losY + offset * 5 * YARD;
+        if (lineY < 0 || lineY > H) return null;
+        const isLos = offset === 0;
+        const isMajor = offset % 2 === 0;
+        return (
+          <g key={offset}>
+            <line x1={0} y1={lineY} x2={W} y2={lineY}
+              stroke={isLos ? '#ffd700' : isMajor ? '#3a7a3a' : '#2a5a2a'}
+              strokeWidth={isLos ? 2.5 : isMajor ? 1 : 0.5}
+              strokeDasharray={isLos ? undefined : isMajor ? '6 4' : '3 5'} />
+            {isMajor && !isLos && (
+              <text x={14} y={lineY - 3} fill="#4ade80" fontSize={9} fontFamily="monospace" opacity={0.5}>
+                {Math.abs(offset) * 5}yd
+              </text>
+            )}
+          </g>
+        );
+      })}
+
+      <text x={W - 6} y={losY - 3} fill="#ffd700" fontSize={9} fontFamily="monospace" textAnchor="end" fontWeight="bold" opacity={0.9}>LOS</text>
+
+      {Array.from({ length: 51 }, (_, i) => {
+        const ly = losY - 25 * YARD + i * YARD;
+        if (ly < 0 || ly > H) return null;
+        return (
+          <g key={`h${i}`}>
+            <line x1={W / 2 - 50} y1={ly} x2={W / 2 - 30} y2={ly} stroke="#2a5a2a" strokeWidth={0.5} />
+            <line x1={W / 2 + 30} y1={ly} x2={W / 2 + 50} y2={ly} stroke="#2a5a2a" strokeWidth={0.5} />
+          </g>
+        );
+      })}
+
+      <line x1={5} y1={0} x2={5} y2={H} stroke="#4ade80" strokeWidth={2} opacity={0.25} />
+      <line x1={W - 5} y1={0} x2={W - 5} y2={H} stroke="#4ade80" strokeWidth={2} opacity={0.25} />
+
+      {play.routes.map(route => {
+        const player = play.players.find(p => p.id === route.playerId);
+        if (!player) return null;
+        return renderRoute(route, player);
+      })}
+
+      {play.players.map(player => {
+        const cfg = PLAYER_CFG[player.type];
+        const isOL = OL_TYPES.includes(player.type);
+        return (
+          <g key={player.id} transform={`translate(${player.x},${player.y})`}>
+            {isOL ? (
+              <rect x={-11} y={-11} width={22} height={22} fill={cfg.color} rx={3} stroke={cfg.stroke} strokeWidth={1.5} />
+            ) : (
+              <circle r={12} fill={cfg.color} stroke={cfg.stroke} strokeWidth={1.5} />
+            )}
+            <text textAnchor="middle" dominantBaseline="middle" fill="white"
+              fontSize={isOL ? 7 : 9} fontWeight="bold" fontFamily="monospace"
+              style={{ pointerEvents: 'none' }}>
+              {cfg.label}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+export default function PlaybookViewer() {
+  const { data: plays = [], isLoading } = useQuery<SavedPlay[]>({ queryKey: ['/api/my-playbook'] });
+  const [idx, setIdx] = useState(0);
+  const safeIdx = Math.min(idx, Math.max(0, plays.length - 1));
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-16">
+        <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (plays.length === 0) {
+    return (
+      <div className="text-center py-20" data-testid="playbook-empty">
+        <BookOpen className="w-12 h-12 text-primary/20 mx-auto mb-3" />
+        <p className="text-muted-foreground text-sm">Az edződ még nem mentett playt a playbookba.</p>
+      </div>
+    );
+  }
+
+  const current = plays[safeIdx];
+  if (!current) return null;
+
+  return (
+    <div className="space-y-4 max-w-3xl mx-auto" data-testid="playbook-viewer">
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => setIdx(i => Math.max(0, i - 1))}
+          disabled={safeIdx === 0}
+          className="p-1.5 text-muted-foreground hover:text-primary disabled:opacity-30 transition-colors"
+          data-testid="button-prev-play"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+        <div className="text-center">
+          <p className="font-bold text-foreground text-lg" data-testid="text-play-name">{current.name}</p>
+          <p className="text-xs text-muted-foreground">{safeIdx + 1} / {plays.length}</p>
+        </div>
+        <button
+          onClick={() => setIdx(i => Math.min(plays.length - 1, i + 1))}
+          disabled={safeIdx === plays.length - 1}
+          className="p-1.5 text-muted-foreground hover:text-primary disabled:opacity-30 transition-colors"
+          data-testid="button-next-play"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
+      </div>
+
+      {plays.length > 1 && (
+        <div className="flex justify-center gap-1.5">
+          {plays.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setIdx(i)}
+              className={cn("w-2 h-2 rounded-full transition-all", i === safeIdx ? "bg-primary scale-125" : "bg-muted-foreground/30 hover:bg-muted-foreground/50")}
+            />
+          ))}
+        </div>
+      )}
+
+      <FieldSVG play={current.data} />
+
+      <div className="flex flex-wrap gap-3 justify-center pt-1">
+        {[
+          { label: 'OL', color: '#2563eb' },
+          { label: 'QB', color: '#059669' },
+          { label: 'WR', color: '#d97706' },
+          { label: 'RB', color: '#ea580c' },
+          { label: 'TE', color: '#7c3aed' },
+          { label: 'FB', color: '#db2777' },
+        ].map(({ label, color }) => (
+          <div key={label} className="flex items-center gap-1.5">
+            <div className={cn("w-4 h-4 flex items-center justify-center", label === 'OL' ? 'rounded-sm' : 'rounded-full')}
+              style={{ background: color }} />
+            <span className="text-xs text-muted-foreground font-mono">{label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

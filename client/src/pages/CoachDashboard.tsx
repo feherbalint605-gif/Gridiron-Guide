@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, ChevronDown, ChevronUp, Dumbbell, Utensils, BarChart3, User, Save, MessageSquare, Plus, Trash2, RefreshCw } from "lucide-react";
+import { Users, ChevronDown, ChevronUp, Dumbbell, Utensils, BarChart3, User, Save, MessageSquare, Plus, Trash2, RefreshCw, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { User as UserType } from "@shared/models/auth";
+import PlaybookEditor from "./PlaybookEditor";
 
 type Tab = "workout" | "diet" | "tracking";
 
@@ -482,6 +483,7 @@ function AthleteCard({ athlete }: { athlete: UserType }) {
 }
 
 export default function CoachDashboard({ onSwitchRole }: { onSwitchRole: () => void }) {
+  const [coachTab, setCoachTab] = useState<'athletes' | 'playbook'>('athletes');
   const { data: athletes, isLoading, refetch } = useQuery<UserType[]>({
     queryKey: ["/api/coach/athletes"],
     refetchInterval: 15000,
@@ -489,20 +491,21 @@ export default function CoachDashboard({ onSwitchRole }: { onSwitchRole: () => v
 
   return (
     <div className="min-h-screen bg-background p-6">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
+      <div className="max-w-5xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-4xl font-display font-black text-primary italic mb-1">COACH PORTAL</h1>
-            <p className="text-muted-foreground uppercase tracking-widest text-sm">Játékosok áttekintése</p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => refetch()}
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors uppercase tracking-widest border border-border rounded px-3 py-2"
-              title="Frissítés"
-            >
-              <RefreshCw className="w-3.5 h-3.5" /> Frissítés
-            </button>
+            {coachTab === 'athletes' && (
+              <button
+                onClick={() => refetch()}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors uppercase tracking-widest border border-border rounded px-3 py-2"
+                title="Frissítés"
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> Frissítés
+              </button>
+            )}
             <button
               onClick={onSwitchRole}
               className="text-xs text-muted-foreground hover:text-primary transition-colors uppercase tracking-widest border border-border rounded px-3 py-2"
@@ -512,25 +515,51 @@ export default function CoachDashboard({ onSwitchRole }: { onSwitchRole: () => v
           </div>
         </div>
 
-        {isLoading ? (
-          <div className="flex justify-center py-20">
-            <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-          </div>
-        ) : !athletes || athletes.length === 0 ? (
-          <div className="text-center py-20 bg-card/20 rounded-2xl border border-dashed border-primary/20">
-            <Users className="w-16 h-16 text-primary/20 mx-auto mb-4" />
-            <h2 className="text-xl font-display font-bold text-foreground mb-2">Még nincs játékos</h2>
-            <p className="text-muted-foreground max-w-sm mx-auto text-sm">
-              Azok a játékosok jelennek meg itt, akik csatlakoztak hozzád az athlete felületen.
-            </p>
-          </div>
+        {/* Top-level tabs */}
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => setCoachTab('athletes')}
+            data-testid="button-tab-athletes"
+            className={cn("flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all",
+              coachTab === 'athletes' ? "bg-primary text-black" : "text-muted-foreground hover:text-foreground hover:bg-white/5 border border-border")}
+          >
+            <Users className="w-4 h-4" /> Játékosok
+          </button>
+          <button
+            onClick={() => setCoachTab('playbook')}
+            data-testid="button-tab-playbook"
+            className={cn("flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all",
+              coachTab === 'playbook' ? "bg-primary text-black" : "text-muted-foreground hover:text-foreground hover:bg-white/5 border border-border")}
+          >
+            <BookOpen className="w-4 h-4" /> Playbook
+          </button>
+        </div>
+
+        {coachTab === 'playbook' ? (
+          <PlaybookEditor />
         ) : (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">{athletes.length} játékos csatlakozott</p>
-            {athletes.map(athlete => (
-              <AthleteCard key={athlete.id} athlete={athlete} />
-            ))}
-          </div>
+          <>
+            {isLoading ? (
+              <div className="flex justify-center py-20">
+                <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+              </div>
+            ) : !athletes || athletes.length === 0 ? (
+              <div className="text-center py-20 bg-card/20 rounded-2xl border border-dashed border-primary/20">
+                <Users className="w-16 h-16 text-primary/20 mx-auto mb-4" />
+                <h2 className="text-xl font-display font-bold text-foreground mb-2">Még nincs játékos</h2>
+                <p className="text-muted-foreground max-w-sm mx-auto text-sm">
+                  Azok a játékosok jelennek meg itt, akik csatlakoztak hozzád az athlete felületen.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">{athletes.length} játékos csatlakozott</p>
+                {athletes.map(athlete => (
+                  <AthleteCard key={athlete.id} athlete={athlete} />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

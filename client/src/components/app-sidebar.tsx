@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { type Position } from "@shared/schema";
 import { type User } from "@shared/models/auth";
 import { Link, useLocation } from "wouter";
-import { Home, Video, BookOpen, User as UserIcon, UserCheck, ChevronDown } from "lucide-react";
+import { Home, Video, BookOpen, ClipboardList, User as UserIcon, UserCheck, ChevronDown } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,6 +54,7 @@ export function AppSidebar({ onSwitchRole }: { onSwitchRole: () => void }) {
 
   const mainItems = [
     { title: "Dashboard", url: "/", icon: Home },
+    { title: "Playbook", url: "/playbook", icon: ClipboardList },
     { title: "Film", url: "/film", icon: Video },
     { title: "Study", url: "/study", icon: BookOpen },
   ];

@@ -91,3 +91,13 @@ export const coachComments = pgTable("coach_comments", {
 }, (t) => [unique().on(t.coachId, t.athleteId, t.positionId, t.workoutTitle, t.exerciseName)]);
 
 export type CoachComment = typeof coachComments.$inferSelect;
+
+export const playbookPlays = pgTable("playbook_plays", {
+  id: serial("id").primaryKey(),
+  coachId: text("coach_id").notNull(),
+  name: text("name").notNull(),
+  data: jsonb("data").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type PlaybookPlay = typeof playbookPlays.$inferSelect;

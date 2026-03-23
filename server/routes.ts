@@ -5,7 +5,7 @@ import { api } from "@shared/routes";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import { db } from "./db";
 import { users } from "@shared/models/auth";
-import { workoutLogs, athletePlanOverrides, coachComments } from "@shared/schema";
+import { workoutLogs, athletePlanOverrides, coachComments, playbookPlays } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 
 export async function registerRoutes(
@@ -233,6 +233,70 @@ export async function registerRoutes(
       )
     );
     res.json(comments);
+  });
+
+  // ── Playbook CRUD ──
+
+  const requireCoach = async (req: any, res: any): Promise<string | null> => {
+    if (!req.isAuthenticated()) { res.sendStatus(401); return null; }
+    const user = req.user as any;
+    const coachId = user.claims?.sub;
+    if (!coachId) { res.sendStatus(401); return null; }
+    const [dbUser] = await db.select().from(users).where(eq(users.id, coachId));
+    if (!dbUser || dbUser.role !== 'coach') { res.status(403).json({ message: "Coach only" }); return null; }
+    return coachId;
+  };
+
+  app.get("/api/playbook", async (req, res) => {
+    const coachId = await requireCoach(req, res);
+    if (!coachId) return;
+    const rows = await db.select().from(playbookPlays).where(eq(playbookPlays.coachId, coachId)).orderBy(playbookPlays.createdAt);
+    res.json(rows);
+  });
+
+  app.post("/api/playbook", async (req, res) => {
+    const coachId = await requireCoach(req, res);
+    if (!coachId) return;
+    const { name, data } = req.body;
+    if (!name || typeof name !== 'string' || !name.trim()) return res.status(400).json({ message: "Name required" });
+    if (!data || typeof data !== 'object') return res.status(400).json({ message: "Invalid play data" });
+    const [play] = await db.insert(playbookPlays).values({ coachId, name: name.trim(), data }).returning();
+    res.json(play);
+  });
+
+  app.put("/api/playbook/:id", async (req, res) => {
+    const coachId = await requireCoach(req, res);
+    if (!coachId) return;
+    const id = parseInt(req.params.id);
+    const { name, data } = req.body;
+    if (!name || typeof name !== 'string' || !name.trim()) return res.status(400).json({ message: "Name required" });
+    if (!data || typeof data !== 'object') return res.status(400).json({ message: "Invalid play data" });
+    const [play] = await db.update(playbookPlays).set({ name: name.trim(), data }).where(
+      and(eq(playbookPlays.id, id), eq(playbookPlays.coachId, coachId))
+    ).returning();
+    if (!play) return res.status(404).json({ message: "Not found" });
+    res.json(play);
+  });
+
+  app.delete("/api/playbook/:id", async (req, res) => {
+    const coachId = await requireCoach(req, res);
+    if (!coachId) return;
+    const id = parseInt(req.params.id);
+    await db.delete(playbookPlays).where(
+      and(eq(playbookPlays.id, id), eq(playbookPlays.coachId, coachId))
+    );
+    res.sendStatus(204);
+  });
+
+  app.get("/api/my-playbook", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const user = req.user as any;
+    const athleteId = user.claims?.sub;
+    if (!athleteId) return res.sendStatus(401);
+    const [dbUser] = await db.select().from(users).where(eq(users.id, athleteId));
+    if (!dbUser?.coachId) return res.json([]);
+    const rows = await db.select().from(playbookPlays).where(eq(playbookPlays.coachId, dbUser.coachId)).orderBy(playbookPlays.createdAt);
+    res.json(rows);
   });
 
   app.get("/api/workout-logs/:positionId", async (req, res) => {
