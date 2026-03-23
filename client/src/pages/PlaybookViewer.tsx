@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   W, H, YARD, PLAYER_CFG, OL_TYPES,
-  PlayPlayer, PlayRoute, PlayData, SavedPlay, makeArrowPolygon
+  PlayPlayer, PlayRoute, PlayData, SavedPlay, makeArrowPolygon, yardFromY, yToYard
 } from "@/lib/playbook-types";
 
 function FieldSVG({ play }: { play: PlayData }) {
@@ -28,39 +28,57 @@ function FieldSVG({ play }: { play: PlayData }) {
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full rounded-xl border border-cyan-500/20" style={{ background: '#0a0a0f' }}>
-      {Array.from({ length: 13 }, (_, i) => i - 6).map(offset => {
-        const lineY = losY + offset * 5 * YARD;
+      {yToYard(0) >= 0 && yToYard(0) <= H && (
+        <g>
+          <rect x={0} y={yToYard(0) - 2} width={W} height={20} fill="#22d3ee08" />
+          <text x={W / 2} y={yToYard(0) + 10} fill="#22d3ee" fontSize={10} fontFamily="monospace" textAnchor="middle" opacity={0.3} fontWeight="bold">
+            SAJÁT ENDZONE
+          </text>
+        </g>
+      )}
+
+      {Array.from({ length: 51 }, (_, i) => {
+        const yd = i;
+        const lineY = yToYard(yd);
         if (lineY < 0 || lineY > H) return null;
-        const isLos = offset === 0;
-        const isMajor = offset % 2 === 0;
+        const isLos = Math.abs(lineY - losY) < 1;
+        const is5 = yd % 5 === 0;
+        const is10 = yd % 10 === 0;
+        if (isLos) return null;
+        if (!is5) {
+          return (
+            <g key={`h${yd}`}>
+              <line x1={W / 2 - 50} y1={lineY} x2={W / 2 - 30} y2={lineY} stroke="#164e63" strokeWidth={0.5} />
+              <line x1={W / 2 + 30} y1={lineY} x2={W / 2 + 50} y2={lineY} stroke="#164e63" strokeWidth={0.5} />
+            </g>
+          );
+        }
         return (
-          <g key={offset}>
+          <g key={`yd${yd}`}>
             <line x1={0} y1={lineY} x2={W} y2={lineY}
-              stroke={isLos ? '#22d3ee' : isMajor ? '#0e7490' : '#164e63'}
-              strokeWidth={isLos ? 2.5 : isMajor ? 1 : 0.5}
-              strokeDasharray={isLos ? undefined : isMajor ? '6 4' : '3 5'}
-              opacity={isLos ? 1 : 0.5} />
-            {isMajor && !isLos && (
+              stroke={is10 ? '#0e7490' : '#164e63'}
+              strokeWidth={is10 ? 1 : 0.5}
+              strokeDasharray={is10 ? '6 4' : '3 5'}
+              opacity={0.5} />
+            {is10 && (
               <text x={14} y={lineY - 3} fill="#22d3ee" fontSize={9} fontFamily="monospace" opacity={0.35}>
-                {Math.abs(offset) * 5}yd
+                {yd}
+              </text>
+            )}
+            {is10 && (
+              <text x={W - 14} y={lineY - 3} fill="#22d3ee" fontSize={9} fontFamily="monospace" textAnchor="end" opacity={0.35}>
+                {yd}
               </text>
             )}
           </g>
         );
       })}
 
-      <text x={W - 6} y={losY - 3} fill="#22d3ee" fontSize={9} fontFamily="monospace" textAnchor="end" fontWeight="bold" opacity={0.9}>LOS</text>
-
-      {Array.from({ length: 51 }, (_, i) => {
-        const ly = losY - 25 * YARD + i * YARD;
-        if (ly < 0 || ly > H) return null;
-        return (
-          <g key={`h${i}`}>
-            <line x1={W / 2 - 50} y1={ly} x2={W / 2 - 30} y2={ly} stroke="#164e63" strokeWidth={0.5} />
-            <line x1={W / 2 + 30} y1={ly} x2={W / 2 + 50} y2={ly} stroke="#164e63" strokeWidth={0.5} />
-          </g>
-        );
-      })}
+      <line x1={0} y1={losY} x2={W} y2={losY} stroke="#22d3ee" strokeWidth={2.5} />
+      <rect x={W - 60} y={losY - 14} width={56} height={14} fill="#22d3ee15" rx={2} />
+      <text x={W - 6} y={losY - 3} fill="#22d3ee" fontSize={9} fontFamily="monospace" textAnchor="end" fontWeight="bold" opacity={0.9}>
+        LOS {Math.round(yardFromY(losY))}
+      </text>
 
       <line x1={5} y1={0} x2={5} y2={H} stroke="#22d3ee" strokeWidth={2} opacity={0.15} />
       <line x1={W - 5} y1={0} x2={W - 5} y2={H} stroke="#22d3ee" strokeWidth={2} opacity={0.15} />

@@ -60,10 +60,17 @@ export const clamp = (v: number, min: number, max: number) => Math.max(min, Math
 let _nid = 1;
 export const genId = () => `p${Date.now()}_${_nid++}`;
 
+export function yardFromY(y: number): number {
+  return (H - y) / YARD;
+}
+
+export function yToYard(yd: number): number {
+  return H - yd * YARD;
+}
+
 export const LOS_OPTIONS: { label: string; value: number }[] = [];
-for (let yd = 0; yd <= 80; yd += 5) {
-  const losY = 60 + (yd / 80) * (420 - 60);
-  LOS_OPTIONS.push({ label: `${yd} yd`, value: Math.round(losY) });
+for (let yd = 5; yd <= 45; yd += 5) {
+  LOS_OPTIONS.push({ label: `Saját ${yd}`, value: yToYard(yd) });
 }
 
 export function snapLosToOption(losY: number): number {
@@ -77,7 +84,7 @@ export function snapLosToOption(losY: number): number {
 }
 
 export function makeDefaultPlay(): PlayData {
-  const losY = snapLosToOption(280);
+  const losY = yToYard(25);
   return {
     losY,
     players: [
