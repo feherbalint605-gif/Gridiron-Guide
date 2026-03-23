@@ -27,10 +27,6 @@ export default function PlaybookEditor() {
   const [mousePos, setMousePos] = useState<[number, number] | null>(null);
   const [showRouteMenu, setShowRouteMenu] = useState<{ x: number; y: number } | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [straightMode, setStraightMode] = useState(false);
-  const [straightAnchor, setStraightAnchor] = useState<[number, number] | null>(null);
-  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastMoveRef = useRef<{ x: number; y: number; time: number } | null>(null);
 
   const { data: plays = [] } = useQuery<SavedPlay[]>({ queryKey: ['/api/playbook'] });
 
@@ -163,8 +159,6 @@ export default function PlaybookEditor() {
     setTool('route');
     setRoutePts(null);
     setIsDrawing(false);
-    setStraightMode(false);
-    setStraightAnchor(null);
     setShowRouteMenu(null);
   };
 
@@ -174,51 +168,61 @@ export default function PlaybookEditor() {
     setShowRouteMenu(null);
   };
 
-  const clearHoldTimer = () => {
-    if (holdTimerRef.current) { clearTimeout(holdTimerRef.current); holdTimerRef.current = null; }
-  };
-
-  const simplifyPoints = (pts: [number, number][], tolerance = 4): [number, number][] => {
-    if (pts.length <= 2) return pts;
-    const result: [number, number][] = [pts[0]];
-    for (let i = 1; i < pts.length - 1; i++) {
-      const prev = result[result.length - 1];
-      const dx = pts[i][0] - prev[0];
-      const dy = pts[i][1] - prev[1];
-      if (Math.sqrt(dx * dx + dy * dy) >= tolerance) {
-        result.push(pts[i]);
+  const straightenPath = (raw: [number, number][]): [number, number][] => {
+    if (raw.length <= 2) return raw;
+    const step = 5;
+    const smoothed: [number, number][] = [];
+    for (let i = 0; i < raw.length; i++) {
+      let sx = 0, sy = 0, n = 0;
+      for (let j = Math.max(0, i - step); j <= Math.min(raw.length - 1, i + step); j++) {
+        sx += raw[j][0]; sy += raw[j][1]; n++;
+      }
+      smoothed.push([sx / n, sy / n]);
+    }
+    const angles: number[] = [];
+    for (let i = 0; i < smoothed.length; i++) {
+      if (i === 0 || i === smoothed.length - 1) { angles.push(0); continue; }
+      const prev = smoothed[Math.max(0, i - step)];
+      const next = smoothed[Math.min(smoothed.length - 1, i + step)];
+      const a1 = Math.atan2(smoothed[i][1] - prev[1], smoothed[i][0] - prev[0]);
+      const a2 = Math.atan2(next[1] - smoothed[i][1], next[0] - smoothed[i][0]);
+      let diff = Math.abs(a2 - a1);
+      if (diff > Math.PI) diff = 2 * Math.PI - diff;
+      angles.push(diff);
+    }
+    const keyPoints: number[] = [0];
+    const angleThreshold = 0.35;
+    const minDist = 20;
+    for (let i = 1; i < angles.length - 1; i++) {
+      if (angles[i] > angleThreshold) {
+        let isMax = true;
+        for (let j = Math.max(1, i - 3); j <= Math.min(angles.length - 2, i + 3); j++) {
+          if (j !== i && angles[j] > angles[i]) { isMax = false; break; }
+        }
+        if (isMax) {
+          const lastKey = keyPoints[keyPoints.length - 1];
+          const dx = raw[i][0] - raw[lastKey][0];
+          const dy = raw[i][1] - raw[lastKey][1];
+          if (Math.sqrt(dx * dx + dy * dy) >= minDist) {
+            keyPoints.push(i);
+          }
+        }
       }
     }
-    result.push(pts[pts.length - 1]);
-    return result;
+    keyPoints.push(raw.length - 1);
+    return keyPoints.map(i => raw[i]);
   };
 
   const finishRoute = () => {
     if (!selectedId || !routePts || routePts.length === 0) return;
-    const simplified = simplifyPoints(routePts);
+    const straightened = straightenPath(routePts);
     setPlay(p => ({
       ...p,
-      routes: [...p.routes.filter(r => r.playerId !== selectedId), { playerId: selectedId, points: simplified }],
+      routes: [...p.routes.filter(r => r.playerId !== selectedId), { playerId: selectedId, points: straightened }],
     }));
     setRoutePts(null);
     setIsDrawing(false);
-    setStraightMode(false);
-    setStraightAnchor(null);
-    clearHoldTimer();
     setTool('select');
-  };
-
-  const startHoldDetection = (x: number, y: number) => {
-    clearHoldTimer();
-    lastMoveRef.current = { x, y, time: Date.now() };
-    holdTimerRef.current = setTimeout(() => {
-      setStraightMode(true);
-      setRoutePts(prev => {
-        if (!prev || prev.length === 0) return prev;
-        setStraightAnchor(prev[prev.length - 1]);
-        return prev;
-      });
-    }, 400);
   };
 
   const onSvgPointerDown = (e: React.PointerEvent) => {
@@ -228,10 +232,7 @@ export default function PlaybookEditor() {
       setShowRouteMenu(null);
     } else if (tool === 'route' && selectedId) {
       setIsDrawing(true);
-      setStraightMode(false);
-      setStraightAnchor(null);
       setRoutePts([[x, y]]);
-      startHoldDetection(x, y);
       (e.currentTarget as SVGElement).setPointerCapture(e.pointerId);
     }
   };
@@ -248,32 +249,7 @@ export default function PlaybookEditor() {
       }));
     }
     if (isDrawing && tool === 'route' && selectedId) {
-      const last = lastMoveRef.current;
-      if (last) {
-        const dx = x - last.x;
-        const dy = y - last.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist > 3) {
-          clearHoldTimer();
-          if (straightMode) {
-            setStraightMode(false);
-            setStraightAnchor(null);
-          }
-          startHoldDetection(x, y);
-        }
-      }
-      if (straightMode && straightAnchor) {
-        setRoutePts(prev => {
-          if (!prev) return prev;
-          const anchorIdx = prev.findIndex(p => p[0] === straightAnchor[0] && p[1] === straightAnchor[1]);
-          if (anchorIdx >= 0) {
-            return [...prev.slice(0, anchorIdx + 1), [x, y]];
-          }
-          return [...prev, [x, y]];
-        });
-      } else {
-        setRoutePts(prev => prev ? [...prev, [x, y]] : [[x, y]]);
-      }
+      setRoutePts(prev => prev ? [...prev, [x, y]] : [[x, y]]);
     }
   };
 
@@ -284,9 +260,6 @@ export default function PlaybookEditor() {
     } else if (isDrawing) {
       setIsDrawing(false);
       setRoutePts(null);
-      setStraightMode(false);
-      setStraightAnchor(null);
-      clearHoldTimer();
     }
   };
 
@@ -553,15 +526,9 @@ export default function PlaybookEditor() {
               if (allPts.length < 2) return null;
               const d = 'M ' + allPts.map(([x, y]) => `${x} ${y}`).join(' L ');
               return (
-                <g>
-                  <path d={d} fill="none" stroke={PLAYER_CFG[player.type].color}
-                    strokeWidth={2} strokeDasharray="6 3" strokeLinejoin="round"
-                    strokeLinecap="round" opacity={0.55} />
-                  {straightMode && straightAnchor && (
-                    <circle cx={straightAnchor[0]} cy={straightAnchor[1]} r={4}
-                      fill="#22d3ee" opacity={0.8} />
-                  )}
-                </g>
+                <path d={d} fill="none" stroke={PLAYER_CFG[player.type].color}
+                  strokeWidth={2} strokeDasharray="6 3" strokeLinejoin="round"
+                  strokeLinecap="round" opacity={0.55} />
               );
             })()}
 
@@ -598,17 +565,13 @@ export default function PlaybookEditor() {
 
           {tool === 'route' && selectedId && (
             <div className="absolute top-2 right-2 flex items-center gap-2">
-              {isDrawing && straightMode ? (
+              {isDrawing ? (
                 <div className="px-2 py-1 bg-cyan-500/20 text-cyan-300 text-[10px] rounded border border-cyan-500/30 font-bold">
-                  Egyenes mód — húzd a végponthoz
-                </div>
-              ) : isDrawing ? (
-                <div className="px-2 py-1 bg-black/80 text-cyan-400/60 text-[10px] rounded border border-cyan-500/20">
-                  Rajzolás... tartsd lenyomva = egyenes
+                  Rajzolás... engedd el = egyenesítés
                 </div>
               ) : (
                 <div className="px-2 py-1 bg-black/80 text-cyan-400/60 text-[10px] rounded border border-cyan-500/20">
-                  Nyomj a mezőre és húzd a route-ot
+                  Húzd a mezőn a route-ot — automatikusan kiegyenesíti
                 </div>
               )}
               {!isDrawing && (
