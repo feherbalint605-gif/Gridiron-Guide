@@ -18,15 +18,15 @@ export const PLAYER_CFG: Record<string, { color: string; stroke: string; label: 
 export const OL_TYPES = ['LT', 'LG', 'C', 'RG', 'RT'];
 
 export const ROUTE_TREE: { num: number; name: string; offsets: [number, number][] }[] = [
-  { num: 1, name: 'Flat/Hitch',  offsets: [[0, -3 * YARD], [0, -1.5 * YARD]] },
-  { num: 2, name: 'Slant',       offsets: [[0, -3 * YARD], [-6 * YARD, -12 * YARD]] },
-  { num: 3, name: 'Comeback',    offsets: [[0, -14 * YARD], [-2 * YARD, -10 * YARD]] },
-  { num: 4, name: 'Curl/Hook',   offsets: [[0, -12 * YARD], [0, -9 * YARD]] },
-  { num: 5, name: 'Out',         offsets: [[0, -12 * YARD], [8 * YARD, -12 * YARD]] },
-  { num: 6, name: 'Dig/In',      offsets: [[0, -12 * YARD], [-8 * YARD, -12 * YARD]] },
-  { num: 7, name: 'Corner',      offsets: [[0, -8 * YARD], [6 * YARD, -20 * YARD]] },
-  { num: 8, name: 'Post',        offsets: [[0, -15 * YARD], [-6 * YARD, -25 * YARD]] },
-  { num: 9, name: 'Go/Fade/Fly', offsets: [[0, -25 * YARD]] },
+  { num: 1, name: 'Flat',        offsets: [[0, -3 * YARD], [6 * YARD, 0]] },
+  { num: 2, name: 'Slant',       offsets: [[0, -5 * YARD], [-7 * YARD, -7 * YARD]] },
+  { num: 3, name: 'Comeback',    offsets: [[0, -12 * YARD], [4 * YARD, 4 * YARD]] },
+  { num: 4, name: 'Curl/Hook',   offsets: [[0, -10 * YARD], [0, 3 * YARD]] },
+  { num: 5, name: 'Out',         offsets: [[0, -5 * YARD], [8 * YARD, 0]] },
+  { num: 6, name: 'Dig/In',      offsets: [[0, -10 * YARD], [-8 * YARD, 0]] },
+  { num: 7, name: 'Corner',      offsets: [[0, -12 * YARD], [8 * YARD, -8 * YARD]] },
+  { num: 8, name: 'Post',        offsets: [[0, -12 * YARD], [-8 * YARD, -8 * YARD]] },
+  { num: 9, name: 'Go/Fade',     offsets: [[1 * YARD, -30 * YARD]] },
 ];
 
 export type PlayerType = 'LT' | 'LG' | 'C' | 'RG' | 'RT' | 'QB' | 'WR' | 'RB' | 'TE' | 'FB';
