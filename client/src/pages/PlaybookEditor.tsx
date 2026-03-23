@@ -7,14 +7,15 @@ import { cn } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
-  W, H, YARD, PLAYER_CFG, OL_TYPES, ROUTE_TREE,
+  W, H, YARD, PLAYER_CFG, OL_TYPES, ROUTE_TREE, LOS_OPTIONS,
   PlayerType, PlayPlayer, PlayRoute, PlayData, SavedPlay,
-  clamp, makeDefaultPlay, applyRouteTree, makeArrowPolygon, genId
+  clamp, makeDefaultPlay, applyRouteTree, makeArrowPolygon, genId, snapLosToOption
 } from "@/lib/playbook-types";
 
 export default function PlaybookEditor() {
   const { toast } = useToast();
   const svgRef = useRef<SVGSVGElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const [play, setPlay] = useState<PlayData>(makeDefaultPlay);
   const [playName, setPlayName] = useState('');
@@ -24,6 +25,7 @@ export default function PlaybookEditor() {
   const [dragging, setDragging] = useState<string | null>(null);
   const [routePts, setRoutePts] = useState<[number, number][] | null>(null);
   const [mousePos, setMousePos] = useState<[number, number] | null>(null);
+  const [showRouteMenu, setShowRouteMenu] = useState<{ x: number; y: number } | null>(null);
 
   const { data: plays = [] } = useQuery<SavedPlay[]>({ queryKey: ['/api/playbook'] });
 
@@ -56,11 +58,21 @@ export default function PlaybookEditor() {
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { setRoutePts(null); setTool('select'); }
+      if (e.key === 'Escape') { setRoutePts(null); setTool('select'); setShowRouteMenu(null); }
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
   }, []);
+
+  useEffect(() => {
+    if (!showRouteMenu) return;
+    const h = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('[data-route-menu]')) setShowRouteMenu(null);
+    };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [showRouteMenu]);
 
   const getSvgXY = useCallback((e: React.MouseEvent | React.PointerEvent): [number, number] => {
     const svg = svgRef.current;
@@ -72,13 +84,28 @@ export default function PlaybookEditor() {
     ];
   }, []);
 
+  const getScreenXY = useCallback((svgX: number, svgY: number): { x: number; y: number } => {
+    const svg = svgRef.current;
+    const container = containerRef.current;
+    if (!svg || !container) return { x: 0, y: 0 };
+    const svgRect = svg.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    return {
+      x: svgRect.left - containerRect.left + (svgX / W) * svgRect.width,
+      y: svgRect.top - containerRect.top + (svgY / H) * svgRect.height,
+    };
+  }, []);
+
   const loadPlay = (p: SavedPlay) => {
-    setPlay(JSON.parse(JSON.stringify(p.data)));
+    const data = JSON.parse(JSON.stringify(p.data)) as PlayData;
+    data.losY = snapLosToOption(data.losY);
+    setPlay(data);
     setPlayName(p.name);
     setEditingId(p.id);
     setSelectedId(null);
     setRoutePts(null);
     setTool('select');
+    setShowRouteMenu(null);
   };
 
   const newPlay = () => {
@@ -87,6 +114,7 @@ export default function PlaybookEditor() {
     setEditingId(null);
     setSelectedId(null);
     setRoutePts(null);
+    setShowRouteMenu(null);
   };
 
   const addPlayer = (type: PlayerType) => {
@@ -96,6 +124,7 @@ export default function PlaybookEditor() {
       players: [...p.players, { id, type, x: W / 2, y: p.losY + 5 * YARD }],
     }));
     setSelectedId(id);
+    setShowRouteMenu(null);
   };
 
   const removeSelected = () => {
@@ -106,22 +135,31 @@ export default function PlaybookEditor() {
       routes: p.routes.filter(r => r.playerId !== selectedId),
     }));
     setSelectedId(null);
+    setShowRouteMenu(null);
+  };
+
+  const applyRoute = (routeNum: number) => {
+    if (!selectedId) return;
+    const player = play.players.find(p => p.id === selectedId);
+    if (!player) return;
+    const pts = applyRouteTree(player, routeNum);
+    setPlay(p => ({
+      ...p,
+      routes: [...p.routes.filter(r => r.playerId !== selectedId), { playerId: selectedId, points: pts }],
+    }));
+    setShowRouteMenu(null);
+  };
+
+  const startCustomRoute = () => {
+    setTool('route');
+    setRoutePts(null);
+    setShowRouteMenu(null);
   };
 
   const clearRouteForSelected = () => {
     if (!selectedId) return;
     setPlay(p => ({ ...p, routes: p.routes.filter(r => r.playerId !== selectedId) }));
-  };
-
-  const applyRoute = (name: string) => {
-    if (!selectedId) return;
-    const player = play.players.find(p => p.id === selectedId);
-    if (!player) return;
-    const pts = applyRouteTree(player, name);
-    setPlay(p => ({
-      ...p,
-      routes: [...p.routes.filter(r => r.playerId !== selectedId), { playerId: selectedId, points: pts }],
-    }));
+    setShowRouteMenu(null);
   };
 
   const finishRoute = () => {
@@ -131,12 +169,14 @@ export default function PlaybookEditor() {
       routes: [...p.routes.filter(r => r.playerId !== selectedId), { playerId: selectedId, points: routePts }],
     }));
     setRoutePts(null);
+    setTool('select');
   };
 
   const onSvgPointerDown = (e: React.PointerEvent) => {
     const [x, y] = getSvgXY(e);
     if (tool === 'select') {
       setSelectedId(null);
+      setShowRouteMenu(null);
     } else if (tool === 'route' && selectedId) {
       setRoutePts(prev => prev ? [...prev, [x, y]] : [[x, y]]);
     }
@@ -155,12 +195,40 @@ export default function PlaybookEditor() {
     }
   };
 
-  const onPlayerPointerDown = (playerId: string, e: React.PointerEvent) => {
+  const isReceiver = (type: PlayerType) => !OL_TYPES.includes(type);
+
+  const dragStartRef = useRef<{ x: number; y: number; id: string; moved: boolean } | null>(null);
+
+  const onPlayerPointerDown = (player: PlayPlayer, e: React.PointerEvent) => {
     e.stopPropagation();
-    setSelectedId(playerId);
-    if (tool === 'select') {
-      setDragging(playerId);
-      (e.currentTarget as SVGElement).setPointerCapture(e.pointerId);
+    if (tool === 'route') {
+      setSelectedId(player.id);
+      return;
+    }
+    setSelectedId(player.id);
+    setShowRouteMenu(null);
+    dragStartRef.current = { x: e.clientX, y: e.clientY, id: player.id, moved: false };
+    (e.currentTarget as SVGElement).setPointerCapture(e.pointerId);
+  };
+
+  const onPlayerPointerMove = (e: React.PointerEvent) => {
+    if (!dragStartRef.current) return;
+    const dx = e.clientX - dragStartRef.current.x;
+    const dy = e.clientY - dragStartRef.current.y;
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+      dragStartRef.current.moved = true;
+      setDragging(dragStartRef.current.id);
+    }
+    onSvgPointerMove(e);
+  };
+
+  const onPlayerPointerUp = (player: PlayPlayer) => {
+    const ref = dragStartRef.current;
+    dragStartRef.current = null;
+    setDragging(null);
+    if (ref && !ref.moved && isReceiver(player.type) && tool === 'select') {
+      const pos = getScreenXY(player.x, player.y);
+      setShowRouteMenu({ x: pos.x, y: pos.y });
     }
   };
 
@@ -185,13 +253,14 @@ export default function PlaybookEditor() {
     );
   };
 
+  const selectedPlayer = selectedId ? play.players.find(p => p.id === selectedId) : null;
+
   return (
     <div className="flex gap-4 h-full" data-testid="playbook-editor">
-      {/* Left: Play list */}
       <div className="w-44 shrink-0 flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-mono uppercase text-muted-foreground tracking-widest">Playbook</span>
-          <button onClick={newPlay} className="text-primary hover:text-primary/80" title="Új play" data-testid="button-new-play">
+          <span className="text-xs font-mono uppercase text-cyan-400 tracking-widest">Playbook</span>
+          <button onClick={newPlay} className="text-cyan-400 hover:text-cyan-300" title="Új play" data-testid="button-new-play">
             <FilePlus className="w-4 h-4" />
           </button>
         </div>
@@ -206,7 +275,7 @@ export default function PlaybookEditor() {
               data-testid={`play-item-${p.id}`}
               className={cn(
                 "group flex items-center gap-1 px-2 py-1.5 rounded text-sm cursor-pointer transition-colors",
-                editingId === p.id ? "bg-primary text-black font-bold" : "hover:bg-white/5 text-foreground"
+                editingId === p.id ? "bg-cyan-500 text-black font-bold" : "hover:bg-white/5 text-foreground"
               )}
             >
               <span className="flex-1 truncate text-xs">{p.name}</span>
@@ -223,56 +292,58 @@ export default function PlaybookEditor() {
         </div>
       </div>
 
-      {/* Main area */}
       <div className="flex-1 flex flex-col gap-3 min-w-0">
-        {/* Toolbar */}
-        <div className="flex flex-wrap items-center gap-2 bg-card/30 border border-border rounded-lg px-3 py-2">
+        <div className="flex flex-wrap items-center gap-2 bg-black/40 border border-cyan-500/20 rounded-lg px-3 py-2">
           <div className="flex gap-1">
             <button
-              onClick={() => { setTool('select'); setRoutePts(null); }}
+              onClick={() => { setTool('select'); setRoutePts(null); setShowRouteMenu(null); }}
               data-testid="button-tool-select"
               className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-bold transition-all",
-                tool === 'select' ? "bg-primary text-black" : "text-muted-foreground hover:text-foreground hover:bg-white/10")}
+                tool === 'select' ? "bg-cyan-500 text-black" : "text-cyan-400/60 hover:text-cyan-300 hover:bg-white/5")}
             >
               <MousePointer className="w-3 h-3" /> Mozgatás
             </button>
             <button
-              onClick={() => { setTool('route'); setRoutePts(null); }}
+              onClick={() => { setTool('route'); setRoutePts(null); setShowRouteMenu(null); }}
               data-testid="button-tool-route"
               className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-bold transition-all",
-                tool === 'route' ? "bg-primary text-black" : "text-muted-foreground hover:text-foreground hover:bg-white/10")}
+                tool === 'route' ? "bg-cyan-500 text-black" : "text-cyan-400/60 hover:text-cyan-300 hover:bg-white/5")}
             >
               <Pen className="w-3 h-3" /> Route rajz
             </button>
           </div>
 
-          <div className="w-px h-4 bg-border" />
+          <div className="w-px h-4 bg-cyan-500/20" />
 
           <div className="flex items-center gap-1 flex-wrap">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-widest">+Játékos:</span>
+            <span className="text-[10px] text-cyan-400/50 uppercase tracking-widest">+Játékos:</span>
             {(['WR', 'RB', 'TE', 'FB'] as PlayerType[]).map(t => (
               <button
                 key={t}
                 onClick={() => addPlayer(t)}
                 data-testid={`button-add-${t.toLowerCase()}`}
                 className="px-2 py-0.5 rounded text-[11px] font-bold border transition-colors hover:bg-white/10"
-                style={{ color: PLAYER_CFG[t].color, borderColor: PLAYER_CFG[t].color + '50' }}
+                style={{ color: PLAYER_CFG[t].color, borderColor: PLAYER_CFG[t].color + '40' }}
               >
                 +{t}
               </button>
             ))}
           </div>
 
-          <div className="w-px h-4 bg-border" />
+          <div className="w-px h-4 bg-cyan-500/20" />
 
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-muted-foreground uppercase">LOS:</span>
-            <input
-              type="range" min={60} max={420} value={losY}
+            <span className="text-[10px] text-cyan-400/50 uppercase">LOS:</span>
+            <select
+              value={losY}
               onChange={e => setPlay(p => ({ ...p, losY: Number(e.target.value) }))}
-              className="w-24 accent-primary h-1"
-              data-testid="input-los-slider"
-            />
+              className="bg-black/60 border border-cyan-500/30 text-cyan-300 text-xs rounded px-2 py-1 focus:outline-none focus:border-cyan-400"
+              data-testid="select-los"
+            >
+              {LOS_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
           </div>
 
           {selectedId && (
@@ -286,20 +357,18 @@ export default function PlaybookEditor() {
           )}
         </div>
 
-        {/* SVG Field */}
-        <div className="relative">
+        <div className="relative" ref={containerRef}>
           <svg
             ref={svgRef}
             viewBox={`0 0 ${W} ${H}`}
-            className={cn("w-full rounded-xl border border-border block select-none",
+            className={cn("w-full rounded-xl border border-cyan-500/20 block select-none",
               tool === 'route' ? 'cursor-crosshair' : 'cursor-default')}
-            style={{ background: '#1a4d1a', touchAction: 'none' }}
+            style={{ background: '#0a0a0f', touchAction: 'none' }}
             onPointerDown={onSvgPointerDown}
             onPointerMove={onSvgPointerMove}
             onPointerUp={() => setDragging(null)}
             onPointerLeave={() => setMousePos(null)}
           >
-            {/* Yard lines */}
             {Array.from({ length: 13 }, (_, i) => i - 6).map(offset => {
               const lineY = losY + offset * 5 * YARD;
               if (lineY < 0 || lineY > H) return null;
@@ -308,11 +377,12 @@ export default function PlaybookEditor() {
               return (
                 <g key={offset}>
                   <line x1={0} y1={lineY} x2={W} y2={lineY}
-                    stroke={isLos ? '#ffd700' : isMajor ? '#3a7a3a' : '#2a5a2a'}
+                    stroke={isLos ? '#22d3ee' : isMajor ? '#0e7490' : '#164e63'}
                     strokeWidth={isLos ? 2.5 : isMajor ? 1 : 0.5}
-                    strokeDasharray={isLos ? undefined : isMajor ? '6 4' : '3 5'} />
+                    strokeDasharray={isLos ? undefined : isMajor ? '6 4' : '3 5'}
+                    opacity={isLos ? 1 : 0.5} />
                   {isMajor && !isLos && (
-                    <text x={14} y={lineY - 3} fill="#4ade80" fontSize={9} fontFamily="monospace" opacity={0.5}>
+                    <text x={14} y={lineY - 3} fill="#22d3ee" fontSize={9} fontFamily="monospace" opacity={0.35}>
                       {Math.abs(offset) * 5}yd
                     </text>
                   )}
@@ -320,36 +390,31 @@ export default function PlaybookEditor() {
               );
             })}
 
-            {/* LOS label */}
-            <rect x={W - 48} y={losY - 13} width={44} height={13} fill="#ffd70015" rx={2} />
-            <text x={W - 6} y={losY - 3} fill="#ffd700" fontSize={9} fontFamily="monospace" textAnchor="end" fontWeight="bold" opacity={0.9}>
+            <rect x={W - 48} y={losY - 13} width={44} height={13} fill="#22d3ee10" rx={2} />
+            <text x={W - 6} y={losY - 3} fill="#22d3ee" fontSize={9} fontFamily="monospace" textAnchor="end" fontWeight="bold" opacity={0.9}>
               LOS
             </text>
 
-            {/* Hash marks */}
             {Array.from({ length: 51 }, (_, i) => {
               const ly = losY - 25 * YARD + i * YARD;
               if (ly < 0 || ly > H) return null;
               return (
                 <g key={`h${i}`}>
-                  <line x1={W / 2 - 50} y1={ly} x2={W / 2 - 30} y2={ly} stroke="#2a5a2a" strokeWidth={0.5} />
-                  <line x1={W / 2 + 30} y1={ly} x2={W / 2 + 50} y2={ly} stroke="#2a5a2a" strokeWidth={0.5} />
+                  <line x1={W / 2 - 50} y1={ly} x2={W / 2 - 30} y2={ly} stroke="#164e63" strokeWidth={0.5} />
+                  <line x1={W / 2 + 30} y1={ly} x2={W / 2 + 50} y2={ly} stroke="#164e63" strokeWidth={0.5} />
                 </g>
               );
             })}
 
-            {/* Sidelines */}
-            <line x1={5} y1={0} x2={5} y2={H} stroke="#4ade80" strokeWidth={2} opacity={0.25} />
-            <line x1={W - 5} y1={0} x2={W - 5} y2={H} stroke="#4ade80" strokeWidth={2} opacity={0.25} />
+            <line x1={5} y1={0} x2={5} y2={H} stroke="#22d3ee" strokeWidth={2} opacity={0.15} />
+            <line x1={W - 5} y1={0} x2={W - 5} y2={H} stroke="#22d3ee" strokeWidth={2} opacity={0.15} />
 
-            {/* Saved routes */}
             {play.routes.map(route => {
               const player = play.players.find(p => p.id === route.playerId);
               if (!player) return null;
               return renderRoute(route, player);
             })}
 
-            {/* Route being drawn */}
             {tool === 'route' && selectedId && mousePos && (() => {
               const player = play.players.find(p => p.id === selectedId);
               if (!player) return null;
@@ -365,7 +430,6 @@ export default function PlaybookEditor() {
               );
             })()}
 
-            {/* Players */}
             {play.players.map(player => {
               const cfg = PLAYER_CFG[player.type];
               const sel = selectedId === player.id;
@@ -374,16 +438,18 @@ export default function PlaybookEditor() {
                 <g
                   key={player.id}
                   transform={`translate(${player.x},${player.y})`}
-                  onPointerDown={(e) => onPlayerPointerDown(player.id, e)}
+                  onPointerDown={(e) => onPlayerPointerDown(player, e)}
+                  onPointerMove={onPlayerPointerMove}
+                  onPointerUp={() => onPlayerPointerUp(player)}
                   style={{ cursor: tool === 'select' ? 'grab' : 'pointer', touchAction: 'none' }}
                   data-testid={`player-${player.id}`}
                 >
-                  {sel && <circle r={17} fill="none" stroke="white" strokeWidth={2} opacity={0.8} />}
+                  {sel && <circle r={17} fill="none" stroke="#22d3ee" strokeWidth={2} opacity={0.8} />}
                   {isOL ? (
                     <rect x={-11} y={-11} width={22} height={22} fill={cfg.color} rx={3}
-                      stroke={sel ? 'white' : cfg.stroke} strokeWidth={1.5} />
+                      stroke={sel ? '#22d3ee' : cfg.stroke} strokeWidth={1.5} />
                   ) : (
-                    <circle r={12} fill={cfg.color} stroke={sel ? 'white' : cfg.stroke} strokeWidth={1.5} />
+                    <circle r={12} fill={cfg.color} stroke={sel ? '#22d3ee' : cfg.stroke} strokeWidth={1.5} />
                   )}
                   <text textAnchor="middle" dominantBaseline="middle" fill="white"
                     fontSize={isOL ? 7 : 9} fontWeight="bold" fontFamily="monospace"
@@ -395,84 +461,99 @@ export default function PlaybookEditor() {
             })}
           </svg>
 
-          {/* Route drawing overlay */}
           {tool === 'route' && selectedId && (
             <div className="absolute top-2 right-2 flex items-center gap-2">
               {routePts && routePts.length > 0 ? (
                 <>
                   <button onClick={finishRoute} data-testid="button-finish-route"
-                    className="flex items-center gap-1 px-2 py-1 bg-primary text-black text-xs font-bold rounded shadow">
+                    className="flex items-center gap-1 px-2 py-1 bg-cyan-500 text-black text-xs font-bold rounded shadow">
                     <Check className="w-3 h-3" /> Kész
                   </button>
                   <button onClick={() => setRoutePts(null)}
-                    className="flex items-center gap-1 px-2 py-1 bg-black/60 text-red-400 text-xs font-bold rounded border border-red-400/30">
+                    className="flex items-center gap-1 px-2 py-1 bg-black/80 text-red-400 text-xs font-bold rounded border border-red-400/30">
                     <X className="w-3 h-3" /> Mégse
                   </button>
                 </>
               ) : (
-                <div className="px-2 py-1 bg-black/70 text-muted-foreground text-[10px] rounded">
+                <div className="px-2 py-1 bg-black/80 text-cyan-400/60 text-[10px] rounded border border-cyan-500/20">
                   Kattints a mezőre a route rajzolásához
                 </div>
               )}
             </div>
           )}
-        </div>
 
-        {/* Route Tree + Save */}
-        <div className="flex flex-col gap-3">
-          <div className="bg-card/20 border border-border/40 rounded-lg p-3">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-mono text-primary uppercase tracking-widest">Route Tree</span>
-              {selectedId && (
-                <button onClick={clearRouteForSelected} className="text-[10px] text-muted-foreground hover:text-red-400 transition-colors" data-testid="button-clear-route">
-                  Route törlése
-                </button>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {Object.keys(ROUTE_TREE).map(name => (
+          {showRouteMenu && selectedPlayer && isReceiver(selectedPlayer.type) && (
+            <div
+              data-route-menu
+              className="absolute z-50 bg-black/95 border border-cyan-500/30 rounded-lg shadow-2xl shadow-cyan-500/10 py-1 min-w-[200px]"
+              style={{
+                left: Math.min(showRouteMenu.x + 20, (containerRef.current?.clientWidth || 400) - 220),
+                top: Math.min(showRouteMenu.y - 60, (containerRef.current?.clientHeight || 400) - 300),
+              }}
+            >
+              <div className="px-3 py-1.5 border-b border-cyan-500/15">
+                <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest">Route Tree</span>
+              </div>
+              {ROUTE_TREE.map(route => (
                 <button
-                  key={name}
-                  onClick={() => applyRoute(name)}
-                  disabled={!selectedId}
-                  data-testid={`button-route-${name.replace(/[^a-zA-Z]/g, '')}`}
-                  className={cn(
-                    "px-2.5 py-1 rounded text-xs font-bold border transition-all",
-                    selectedId
-                      ? "border-primary/30 text-primary/80 hover:bg-primary/10 hover:border-primary/60 hover:text-primary"
-                      : "border-border/20 text-muted-foreground/30 cursor-not-allowed"
-                  )}
+                  key={route.num}
+                  onClick={() => applyRoute(route.num)}
+                  data-testid={`button-route-${route.num}`}
+                  className="w-full text-left px-3 py-1.5 text-xs hover:bg-cyan-500/10 transition-colors flex items-center gap-2"
                 >
-                  {name}
+                  <span className="w-5 h-5 rounded bg-cyan-500/15 text-cyan-400 font-bold text-[11px] flex items-center justify-center shrink-0">
+                    {route.num}
+                  </span>
+                  <span className="text-foreground/90">{route.name}</span>
                 </button>
               ))}
+              <div className="border-t border-cyan-500/15 mt-1 pt-1">
+                <button
+                  onClick={startCustomRoute}
+                  data-testid="button-route-custom"
+                  className="w-full text-left px-3 py-1.5 text-xs hover:bg-cyan-500/10 transition-colors flex items-center gap-2"
+                >
+                  <span className="w-5 h-5 rounded bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
+                    <Pen className="w-3 h-3" />
+                  </span>
+                  <span className="text-foreground/90">Egyéni route rajz</span>
+                </button>
+                {play.routes.some(r => r.playerId === selectedId) && (
+                  <button
+                    onClick={clearRouteForSelected}
+                    data-testid="button-clear-route"
+                    className="w-full text-left px-3 py-1.5 text-xs hover:bg-red-500/10 transition-colors flex items-center gap-2 text-red-400/80"
+                  >
+                    <span className="w-5 h-5 rounded bg-red-500/15 text-red-400 flex items-center justify-center shrink-0">
+                      <Trash2 className="w-3 h-3" />
+                    </span>
+                    Route törlése
+                  </button>
+                )}
+              </div>
             </div>
-            <p className="text-[10px] text-muted-foreground/50 mt-2">
-              {selectedId
-                ? "Válassz route-ot, vagy rajzolj kézzel a Route rajz eszközzel."
-                : "Kattints egy játékosra a kiválasztáshoz."}
-            </p>
-          </div>
+          )}
+        </div>
 
-          <div className="flex gap-2">
-            <Input
-              value={playName}
-              onChange={e => setPlayName(e.target.value)}
-              placeholder="Play neve (pl. Slant Right, HB Counter...)"
-              className="flex-1 bg-black/20 border-border/30 focus:border-primary h-9 text-sm"
-              onKeyDown={e => { if (e.key === 'Enter' && playName.trim()) saveMutation.mutate(); }}
-              data-testid="input-play-name"
-            />
-            <Button
-              onClick={() => saveMutation.mutate()}
-              disabled={saveMutation.isPending || !playName.trim()}
-              className="bg-primary text-black font-bold shrink-0"
-              data-testid="button-save-play"
-            >
-              <Save className="w-4 h-4 mr-1" />
-              {editingId ? 'Frissítés' : 'Mentés'}
-            </Button>
-          </div>
+
+        <div className="flex gap-2">
+          <Input
+            value={playName}
+            onChange={e => setPlayName(e.target.value)}
+            placeholder="Play neve (pl. Slant Right, HB Counter...)"
+            className="flex-1 bg-black/30 border-cyan-500/20 focus:border-cyan-400 h-9 text-sm"
+            onKeyDown={e => { if (e.key === 'Enter' && playName.trim()) saveMutation.mutate(); }}
+            data-testid="input-play-name"
+          />
+          <Button
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending || !playName.trim()}
+            className="bg-cyan-500 hover:bg-cyan-400 text-black font-bold shrink-0"
+            data-testid="button-save-play"
+          >
+            <Save className="w-4 h-4 mr-1" />
+            {editingId ? 'Frissítés' : 'Mentés'}
+          </Button>
         </div>
       </div>
     </div>

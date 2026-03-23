@@ -3,35 +3,31 @@ export const H = 500;
 export const YARD = 10;
 
 export const PLAYER_CFG: Record<string, { color: string; stroke: string; label: string }> = {
-  LT: { color: '#2563eb', stroke: '#1e40af', label: 'LT' },
-  LG: { color: '#2563eb', stroke: '#1e40af', label: 'LG' },
-  C:  { color: '#2563eb', stroke: '#1e40af', label: 'C' },
-  RG: { color: '#2563eb', stroke: '#1e40af', label: 'RG' },
-  RT: { color: '#2563eb', stroke: '#1e40af', label: 'RT' },
-  QB: { color: '#059669', stroke: '#047857', label: 'QB' },
-  WR: { color: '#d97706', stroke: '#b45309', label: 'WR' },
-  RB: { color: '#ea580c', stroke: '#c2410c', label: 'RB' },
-  TE: { color: '#7c3aed', stroke: '#6d28d9', label: 'TE' },
-  FB: { color: '#db2777', stroke: '#be185d', label: 'FB' },
+  LT: { color: '#0ea5e9', stroke: '#0284c7', label: 'LT' },
+  LG: { color: '#0ea5e9', stroke: '#0284c7', label: 'LG' },
+  C:  { color: '#0ea5e9', stroke: '#0284c7', label: 'C' },
+  RG: { color: '#0ea5e9', stroke: '#0284c7', label: 'RG' },
+  RT: { color: '#0ea5e9', stroke: '#0284c7', label: 'RT' },
+  QB: { color: '#22d3ee', stroke: '#06b6d4', label: 'QB' },
+  WR: { color: '#f59e0b', stroke: '#d97706', label: 'WR' },
+  RB: { color: '#ef4444', stroke: '#dc2626', label: 'RB' },
+  TE: { color: '#a855f7', stroke: '#9333ea', label: 'TE' },
+  FB: { color: '#ec4899', stroke: '#db2777', label: 'FB' },
 };
 
 export const OL_TYPES = ['LT', 'LG', 'C', 'RG', 'RT'];
 
-export const ROUTE_TREE: Record<string, [number, number][]> = {
-  'Go/Fly':       [[0, -25 * YARD]],
-  'Slant':        [[0, -3 * YARD], [-6 * YARD, -12 * YARD]],
-  'Out':          [[0, -8 * YARD], [8 * YARD, -8 * YARD]],
-  'In (Dig)':     [[0, -8 * YARD], [-8 * YARD, -8 * YARD]],
-  'Post':         [[0, -8 * YARD], [-6 * YARD, -20 * YARD]],
-  'Corner':       [[0, -8 * YARD], [6 * YARD, -20 * YARD]],
-  'Curl/Hook':    [[0, -12 * YARD], [0, -9 * YARD]],
-  'Comeback':     [[0, -14 * YARD], [-2 * YARD, -10 * YARD]],
-  'Crossing':     [[-14 * YARD, -3 * YARD]],
-  'Flat/Bubble':  [[8 * YARD, 2 * YARD]],
-  'Wheel':        [[8 * YARD, 3 * YARD], [6 * YARD, -14 * YARD]],
-  'Screen':       [[-2 * YARD, 4 * YARD], [8 * YARD, 4 * YARD]],
-  'Hitch':        [[0, -5 * YARD], [0, -3.5 * YARD]],
-};
+export const ROUTE_TREE: { num: number; name: string; offsets: [number, number][] }[] = [
+  { num: 1, name: 'Flat/Hitch',  offsets: [[0, -3 * YARD], [0, -1.5 * YARD]] },
+  { num: 2, name: 'Slant',       offsets: [[0, -3 * YARD], [-6 * YARD, -12 * YARD]] },
+  { num: 3, name: 'Comeback',    offsets: [[0, -14 * YARD], [-2 * YARD, -10 * YARD]] },
+  { num: 4, name: 'Curl/Hook',   offsets: [[0, -12 * YARD], [0, -9 * YARD]] },
+  { num: 5, name: 'Out',         offsets: [[0, -12 * YARD], [8 * YARD, -12 * YARD]] },
+  { num: 6, name: 'Dig/In',      offsets: [[0, -12 * YARD], [-8 * YARD, -12 * YARD]] },
+  { num: 7, name: 'Corner',      offsets: [[0, -8 * YARD], [6 * YARD, -20 * YARD]] },
+  { num: 8, name: 'Post',        offsets: [[0, -15 * YARD], [-6 * YARD, -25 * YARD]] },
+  { num: 9, name: 'Go/Fade/Fly', offsets: [[0, -25 * YARD]] },
+];
 
 export type PlayerType = 'LT' | 'LG' | 'C' | 'RG' | 'RT' | 'QB' | 'WR' | 'RB' | 'TE' | 'FB';
 
@@ -64,8 +60,24 @@ export const clamp = (v: number, min: number, max: number) => Math.max(min, Math
 let _nid = 1;
 export const genId = () => `p${Date.now()}_${_nid++}`;
 
+export const LOS_OPTIONS: { label: string; value: number }[] = [];
+for (let yd = 0; yd <= 80; yd += 5) {
+  const losY = 60 + (yd / 80) * (420 - 60);
+  LOS_OPTIONS.push({ label: `${yd} yd`, value: Math.round(losY) });
+}
+
+export function snapLosToOption(losY: number): number {
+  let best = LOS_OPTIONS[0].value;
+  let bestDist = Math.abs(losY - best);
+  for (const opt of LOS_OPTIONS) {
+    const d = Math.abs(losY - opt.value);
+    if (d < bestDist) { best = opt.value; bestDist = d; }
+  }
+  return best;
+}
+
 export function makeDefaultPlay(): PlayData {
-  const losY = 280;
+  const losY = snapLosToOption(280);
   return {
     losY,
     players: [
@@ -83,13 +95,13 @@ export function makeDefaultPlay(): PlayData {
   };
 }
 
-export function applyRouteTree(player: PlayPlayer, routeName: string): [number, number][] {
-  const offsets = ROUTE_TREE[routeName];
-  if (!offsets) return [];
+export function applyRouteTree(player: PlayPlayer, routeNum: number): [number, number][] {
+  const route = ROUTE_TREE.find(r => r.num === routeNum);
+  if (!route) return [];
   const sideSign = player.x >= W / 2 ? 1 : -1;
   const pts: [number, number][] = [];
   let cx = player.x, cy = player.y;
-  for (const [dx, dy] of offsets) {
+  for (const [dx, dy] of route.offsets) {
     cx = clamp(cx + dx * sideSign, 5, W - 5);
     cy = clamp(cy + dy, 5, H - 5);
     pts.push([cx, cy]);
