@@ -41,13 +41,16 @@ export default function PlaybookEditor() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!playName.trim()) throw new Error('Add nevet a play-nek!');
-      const playData = { ...play, note: playNote || undefined };
+      const playData: PlayData = { ...play, note: playNote.trim() || undefined };
       const body = { name: playName.trim(), data: playData };
-      const res = editingId
-        ? await apiRequest('PUT', `/api/playbook/${editingId}`, body)
-        : await apiRequest('POST', '/api/playbook', body);
-      if (!res.ok) throw new Error('Mentési hiba');
-      return res.json();
+      try {
+        const res = editingId
+          ? await apiRequest('PUT', `/api/playbook/${editingId}`, body)
+          : await apiRequest('POST', '/api/playbook', body);
+        return await res.json();
+      } catch (err: any) {
+        throw new Error(err?.message || 'Mentési hiba');
+      }
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/playbook'] });
@@ -818,13 +821,13 @@ export default function PlaybookEditor() {
               data-testid="input-play-name"
             />
             <Button
-              onClick={() => saveMutation.mutate()}
+              onClick={() => { saveMutation.reset(); saveMutation.mutate(); }}
               disabled={saveMutation.isPending || !playName.trim()}
               className="bg-cyan-500 hover:bg-cyan-400 text-black font-bold shrink-0"
               data-testid="button-save-play"
             >
               <Save className="w-4 h-4 mr-1" />
-              {editingId ? 'Frissítés' : 'Mentés'}
+              {saveMutation.isPending ? 'Mentés...' : editingId ? 'Frissítés' : 'Mentés'}
             </Button>
           </div>
           <textarea
