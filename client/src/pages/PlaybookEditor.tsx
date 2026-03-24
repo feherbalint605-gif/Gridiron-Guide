@@ -8,7 +8,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
   W, H, YARD, PLAYER_CFG, OL_TYPES, ROUTE_TREE, LOS_OPTIONS,
-  PlayerType, PlayPlayer, PlayRoute, PlayData, SavedPlay,
+  PlayerType, PlayPlayer, PlayRoute, PlayData, SavedPlay, RouteLineStyle,
   clamp, makeDefaultPlay, applyRouteTree, makeArrowPolygon, genId, snapLosToOption, yardFromY, yToYard
 } from "@/lib/playbook-types";
 
@@ -27,6 +27,10 @@ export default function PlaybookEditor() {
   const [mousePos, setMousePos] = useState<[number, number] | null>(null);
   const [showRouteMenu, setShowRouteMenu] = useState<{ x: number; y: number } | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [routeLineStyle, setRouteLineStyle] = useState<RouteLineStyle>('solid');
+  const [willStraighten, setWillStraighten] = useState(false);
+  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastMoveTimeRef = useRef<number>(0);
 
   const { data: plays = [] } = useQuery<SavedPlay[]>({ queryKey: ['/api/playbook'] });
 
@@ -213,15 +217,29 @@ export default function PlaybookEditor() {
     return keyPoints.map(i => raw[i]);
   };
 
-  const finishRoute = () => {
+  const clearHoldTimer = () => {
+    if (holdTimerRef.current) { clearTimeout(holdTimerRef.current); holdTimerRef.current = null; }
+  };
+
+  const startHoldTimer = () => {
+    clearHoldTimer();
+    setWillStraighten(false);
+    holdTimerRef.current = setTimeout(() => {
+      setWillStraighten(true);
+    }, 1000);
+  };
+
+  const finishRoute = (doStraighten: boolean) => {
     if (!selectedId || !routePts || routePts.length === 0) return;
-    const straightened = straightenPath(routePts);
+    clearHoldTimer();
+    const finalPts = doStraighten ? straightenPath(routePts) : routePts;
     setPlay(p => ({
       ...p,
-      routes: [...p.routes.filter(r => r.playerId !== selectedId), { playerId: selectedId, points: straightened }],
+      routes: [...p.routes.filter(r => r.playerId !== selectedId), { playerId: selectedId, points: finalPts, lineStyle: routeLineStyle }],
     }));
     setRoutePts(null);
     setIsDrawing(false);
+    setWillStraighten(false);
     setTool('select');
   };
 
@@ -232,7 +250,9 @@ export default function PlaybookEditor() {
       setShowRouteMenu(null);
     } else if (tool === 'route' && selectedId) {
       setIsDrawing(true);
+      setWillStraighten(false);
       setRoutePts([[x, y]]);
+      lastMoveTimeRef.current = Date.now();
       (e.currentTarget as SVGElement).setPointerCapture(e.pointerId);
     }
   };
@@ -241,25 +261,44 @@ export default function PlaybookEditor() {
     const [x, y] = getSvgXY(e);
     setMousePos([x, y]);
     if (dragging) {
-      setPlay(p => ({
-        ...p,
-        players: p.players.map(pl =>
-          pl.id === dragging ? { ...pl, x: clamp(x, 12, W - 12), y: clamp(y, 12, H - 12) } : pl
-        ),
-      }));
+      setPlay(p => {
+        const old = p.players.find(pl => pl.id === dragging);
+        if (!old) return p;
+        const nx = clamp(x, 12, W - 12);
+        const ny = clamp(y, 12, H - 12);
+        const dx = nx - old.x;
+        const dy = ny - old.y;
+        return {
+          ...p,
+          players: p.players.map(pl =>
+            pl.id === dragging ? { ...pl, x: nx, y: ny } : pl
+          ),
+          routes: p.routes.map(r =>
+            r.playerId === dragging
+              ? { ...r, points: r.points.map(([px, py]) => [px + dx, py + dy] as [number, number]) }
+              : r
+          ),
+        };
+      });
     }
     if (isDrawing && tool === 'route' && selectedId) {
+      lastMoveTimeRef.current = Date.now();
+      clearHoldTimer();
+      setWillStraighten(false);
       setRoutePts(prev => prev ? [...prev, [x, y]] : [[x, y]]);
+      startHoldTimer();
     }
   };
 
   const onSvgPointerUp = () => {
     setDragging(null);
     if (isDrawing && routePts && routePts.length > 1) {
-      finishRoute();
+      finishRoute(willStraighten);
     } else if (isDrawing) {
+      clearHoldTimer();
       setIsDrawing(false);
       setRoutePts(null);
+      setWillStraighten(false);
     }
   };
 
@@ -302,7 +341,13 @@ export default function PlaybookEditor() {
 
   const losY = play.losY;
 
-  const renderRoute = (route: PlayRoute, player: PlayPlayer, isDashed = false) => {
+  const getStrokeDash = (style?: RouteLineStyle): string | undefined => {
+    if (style === 'dashed') return '10 5';
+    if (style === 'dotted') return '3 4';
+    return undefined;
+  };
+
+  const renderRoute = (route: PlayRoute, player: PlayPlayer) => {
     const cfg = PLAYER_CFG[player.type];
     const pts: [number, number][] = [[player.x, player.y], ...route.points];
     if (pts.length < 2) return null;
@@ -310,13 +355,13 @@ export default function PlaybookEditor() {
     const from = pts[pts.length - 2];
     const to = pts[pts.length - 1];
     const arrow = makeArrowPolygon(from, to);
+    const dash = getStrokeDash(route.lineStyle);
     return (
-      <g key={route.playerId + (isDashed ? '_d' : '')}>
-        <path d={d} fill="none" stroke={cfg.color} strokeWidth={isDashed ? 2 : 2.5}
+      <g key={route.playerId}>
+        <path d={d} fill="none" stroke={cfg.color} strokeWidth={2.5}
           strokeLinejoin="round" strokeLinecap="round"
-          strokeDasharray={isDashed ? '6 4' : undefined}
-          opacity={isDashed ? 0.6 : 1} />
-        {!isDashed && arrow && <polygon points={arrow} fill={cfg.color} />}
+          strokeDasharray={dash} />
+        {arrow && <polygon points={arrow} fill={cfg.color} />}
       </g>
     );
   };
@@ -564,21 +609,50 @@ export default function PlaybookEditor() {
           </svg>
 
           {tool === 'route' && selectedId && (
-            <div className="absolute top-2 right-2 flex items-center gap-2">
-              {isDrawing ? (
-                <div className="px-2 py-1 bg-cyan-500/20 text-cyan-300 text-[10px] rounded border border-cyan-500/30 font-bold">
-                  Rajzolás... engedd el = egyenesítés
-                </div>
-              ) : (
-                <div className="px-2 py-1 bg-black/80 text-cyan-400/60 text-[10px] rounded border border-cyan-500/20">
-                  Húzd a mezőn a route-ot — automatikusan kiegyenesíti
-                </div>
-              )}
+            <div className="absolute top-2 right-2 flex flex-col items-end gap-1.5">
+              <div className="flex items-center gap-2">
+                {isDrawing && willStraighten ? (
+                  <div className="px-2 py-1 bg-cyan-500/20 text-cyan-300 text-[10px] rounded border border-cyan-500/30 font-bold">
+                    Kiegyenesítés aktív — engedd el
+                  </div>
+                ) : isDrawing ? (
+                  <div className="px-2 py-1 bg-black/80 text-cyan-400/60 text-[10px] rounded border border-cyan-500/20">
+                    Rajzolás... tartsd 1mp = kiegyenesít
+                  </div>
+                ) : (
+                  <div className="px-2 py-1 bg-black/80 text-cyan-400/60 text-[10px] rounded border border-cyan-500/20">
+                    Húzd a route-ot — 1mp tartás = egyenesítés
+                  </div>
+                )}
+                {!isDrawing && (
+                  <button onClick={() => { setTool('select'); setRoutePts(null); clearHoldTimer(); }}
+                    className="flex items-center gap-1 px-2 py-1 bg-black/80 text-red-400 text-xs font-bold rounded border border-red-400/30">
+                    <X className="w-3 h-3" /> Mégse
+                  </button>
+                )}
+              </div>
               {!isDrawing && (
-                <button onClick={() => { setTool('select'); setRoutePts(null); }}
-                  className="flex items-center gap-1 px-2 py-1 bg-black/80 text-red-400 text-xs font-bold rounded border border-red-400/30">
-                  <X className="w-3 h-3" /> Mégse
-                </button>
+                <div className="flex items-center gap-1 bg-black/80 rounded border border-cyan-500/20 p-0.5">
+                  <span className="text-[9px] text-cyan-400/50 px-1">Vonal:</span>
+                  {([['solid', 'Folytonos'], ['dashed', 'Szaggatott'], ['dotted', 'Pontozott']] as [RouteLineStyle, string][]).map(([style, label]) => (
+                    <button key={style} onClick={() => setRouteLineStyle(style)}
+                      data-testid={`button-line-${style}`}
+                      className={cn(
+                        "px-1.5 py-0.5 text-[9px] rounded transition-colors",
+                        routeLineStyle === style
+                          ? "bg-cyan-500/30 text-cyan-300 font-bold"
+                          : "text-cyan-400/50 hover:text-cyan-300"
+                      )}>
+                      <span className="flex items-center gap-1">
+                        <svg width={20} height={6} className="inline-block">
+                          <line x1={0} y1={3} x2={20} y2={3} stroke="currentColor" strokeWidth={2}
+                            strokeDasharray={style === 'dashed' ? '4 2' : style === 'dotted' ? '1.5 2' : undefined} />
+                        </svg>
+                        {label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
           )}

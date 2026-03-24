@@ -38,9 +38,12 @@ export interface PlayPlayer {
   y: number;
 }
 
+export type RouteLineStyle = 'solid' | 'dashed' | 'dotted';
+
 export interface PlayRoute {
   playerId: string;
   points: [number, number][];
+  lineStyle?: RouteLineStyle;
 }
 
 export interface PlayData {

@@ -4,11 +4,17 @@ import { ChevronLeft, ChevronRight, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   W, H, YARD, PLAYER_CFG, OL_TYPES,
-  PlayPlayer, PlayRoute, PlayData, SavedPlay, makeArrowPolygon, yardFromY, yToYard
+  PlayPlayer, PlayRoute, PlayData, SavedPlay, RouteLineStyle, makeArrowPolygon, yardFromY, yToYard
 } from "@/lib/playbook-types";
 
 function FieldSVG({ play }: { play: PlayData }) {
   const losY = play.losY;
+
+  const getStrokeDash = (style?: RouteLineStyle): string | undefined => {
+    if (style === 'dashed') return '10 5';
+    if (style === 'dotted') return '3 4';
+    return undefined;
+  };
 
   const renderRoute = (route: PlayRoute, player: PlayPlayer) => {
     const cfg = PLAYER_CFG[player.type];
@@ -18,9 +24,11 @@ function FieldSVG({ play }: { play: PlayData }) {
     const from = pts[pts.length - 2];
     const to = pts[pts.length - 1];
     const arrow = makeArrowPolygon(from, to);
+    const dash = getStrokeDash(route.lineStyle);
     return (
       <g key={route.playerId}>
-        <path d={d} fill="none" stroke={cfg.color} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+        <path d={d} fill="none" stroke={cfg.color} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round"
+          strokeDasharray={dash} />
         {arrow && <polygon points={arrow} fill={cfg.color} />}
       </g>
     );
