@@ -138,12 +138,20 @@ export default function PlaybookEditor() {
 
   const removeSelected = () => {
     if (!selectedId) return;
-    setPlay(p => ({
-      ...p,
-      players: p.players.filter(pl => pl.id !== selectedId),
-      routes: p.routes.filter(r => r.playerId !== selectedId),
-    }));
-    setSelectedId(null);
+    const hasRoute = play.routes.some(r => r.playerId === selectedId);
+    if (hasRoute) {
+      setPlay(p => ({
+        ...p,
+        routes: p.routes.filter(r => r.playerId !== selectedId),
+      }));
+    } else {
+      setPlay(p => ({
+        ...p,
+        players: p.players.filter(pl => pl.id !== selectedId),
+        routes: p.routes.filter(r => r.playerId !== selectedId),
+      }));
+      setSelectedId(null);
+    }
     setShowRouteMenu(null);
   };
 
@@ -229,10 +237,25 @@ export default function PlaybookEditor() {
     }, 1000);
   };
 
+  const simplifyFreehand = (pts: [number, number][], tolerance = 3): [number, number][] => {
+    if (pts.length <= 2) return pts;
+    const result: [number, number][] = [pts[0]];
+    for (let i = 1; i < pts.length - 1; i++) {
+      const prev = result[result.length - 1];
+      const dx = pts[i][0] - prev[0];
+      const dy = pts[i][1] - prev[1];
+      if (Math.sqrt(dx * dx + dy * dy) >= tolerance) {
+        result.push(pts[i]);
+      }
+    }
+    result.push(pts[pts.length - 1]);
+    return result;
+  };
+
   const finishRoute = (doStraighten: boolean) => {
     if (!selectedId || !routePts || routePts.length === 0) return;
     clearHoldTimer();
-    const finalPts = doStraighten ? straightenPath(routePts) : routePts;
+    const finalPts = doStraighten ? straightenPath(routePts) : simplifyFreehand(routePts);
     setPlay(p => ({
       ...p,
       routes: [...p.routes.filter(r => r.playerId !== selectedId), { playerId: selectedId, points: finalPts, lineStyle: routeLineStyle }],
@@ -482,7 +505,8 @@ export default function PlaybookEditor() {
               data-testid="button-remove-player"
               className="ml-auto flex items-center gap-1 px-2 py-1 rounded text-xs font-bold text-red-400 hover:bg-red-400/10 border border-red-400/20"
             >
-              <Trash2 className="w-3 h-3" /> Törlés
+              <Trash2 className="w-3 h-3" />
+              {play.routes.some(r => r.playerId === selectedId) ? 'Route törlése' : 'Játékos törlése'}
             </button>
           )}
         </div>
