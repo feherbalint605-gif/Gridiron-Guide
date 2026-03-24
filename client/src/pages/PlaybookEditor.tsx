@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { MousePointer, Pen, Plus, Trash2, Save, Check, X, FilePlus } from "lucide-react";
+import { MousePointer, Pen, Plus, Trash2, Save, Check, X, FilePlus, AlertCircle, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -31,13 +31,18 @@ export default function PlaybookEditor() {
   const [willStraighten, setWillStraighten] = useState(false);
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastMoveTimeRef = useRef<number>(0);
+  const [playNote, setPlayNote] = useState('');
+  const [editingPlayerNote, setEditingPlayerNote] = useState<string | null>(null);
+  const [playerNoteText, setPlayerNoteText] = useState('');
+  const [hoveredPlayer, setHoveredPlayer] = useState<string | null>(null);
 
   const { data: plays = [] } = useQuery<SavedPlay[]>({ queryKey: ['/api/playbook'] });
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!playName.trim()) throw new Error('Add nevet a play-nek!');
-      const body = { name: playName.trim(), data: play };
+      const playData = { ...play, note: playNote || undefined };
+      const body = { name: playName.trim(), data: playData };
       const res = editingId
         ? await apiRequest('PUT', `/api/playbook/${editingId}`, body)
         : await apiRequest('POST', '/api/playbook', body);
@@ -110,20 +115,24 @@ export default function PlaybookEditor() {
     data.losY = snapLosToOption(data.losY);
     setPlay(data);
     setPlayName(p.name);
+    setPlayNote(data.note || '');
     setEditingId(p.id);
     setSelectedId(null);
     setRoutePts(null);
     setTool('select');
     setShowRouteMenu(null);
+    setEditingPlayerNote(null);
   };
 
   const newPlay = () => {
     setPlay(makeDefaultPlay());
     setPlayName('');
+    setPlayNote('');
     setEditingId(null);
     setSelectedId(null);
     setRoutePts(null);
     setShowRouteMenu(null);
+    setEditingPlayerNote(null);
   };
 
   const addPlayer = (type: PlayerType) => {
@@ -153,6 +162,24 @@ export default function PlaybookEditor() {
       setSelectedId(null);
     }
     setShowRouteMenu(null);
+  };
+
+  const openPlayerNote = (playerId: string) => {
+    setEditingPlayerNote(playerId);
+    setPlayerNoteText(play.playerNotes?.[playerId] || '');
+  };
+
+  const savePlayerNote = () => {
+    if (!editingPlayerNote) return;
+    const notes = { ...(play.playerNotes || {}) };
+    if (playerNoteText.trim()) {
+      notes[editingPlayerNote] = playerNoteText.trim();
+    } else {
+      delete notes[editingPlayerNote];
+    }
+    setPlay(p => ({ ...p, playerNotes: Object.keys(notes).length > 0 ? notes : undefined }));
+    setEditingPlayerNote(null);
+    setPlayerNoteText('');
   };
 
   const applyRoute = (routeNum: number) => {
@@ -500,14 +527,24 @@ export default function PlaybookEditor() {
           </div>
 
           {selectedId && (
-            <button
-              onClick={removeSelected}
-              data-testid="button-remove-player"
-              className="ml-auto flex items-center gap-1 px-2 py-1 rounded text-xs font-bold text-red-400 hover:bg-red-400/10 border border-red-400/20"
-            >
-              <Trash2 className="w-3 h-3" />
-              {play.routes.some(r => r.playerId === selectedId) ? 'Route törlése' : 'Játékos törlése'}
-            </button>
+            <div className="ml-auto flex items-center gap-1">
+              <button
+                onClick={() => openPlayerNote(selectedId)}
+                data-testid="button-player-note"
+                className="flex items-center gap-1 px-2 py-1 rounded text-xs font-bold text-cyan-400 hover:bg-cyan-400/10 border border-cyan-500/20"
+              >
+                <MessageSquare className="w-3 h-3" />
+                {play.playerNotes?.[selectedId] ? 'Jegyzet ✎' : 'Jegyzet +'}
+              </button>
+              <button
+                onClick={removeSelected}
+                data-testid="button-remove-player"
+                className="flex items-center gap-1 px-2 py-1 rounded text-xs font-bold text-red-400 hover:bg-red-400/10 border border-red-400/20"
+              >
+                <Trash2 className="w-3 h-3" />
+                {play.routes.some(r => r.playerId === selectedId) ? 'Route törlése' : 'Játékos törlése'}
+              </button>
+            </div>
           )}
         </div>
 
@@ -605,6 +642,7 @@ export default function PlaybookEditor() {
               const cfg = PLAYER_CFG[player.type];
               const sel = selectedId === player.id;
               const isOL = OL_TYPES.includes(player.type);
+              const hasNote = !!(play.playerNotes?.[player.id]);
               return (
                 <g
                   key={player.id}
@@ -612,6 +650,8 @@ export default function PlaybookEditor() {
                   onPointerDown={(e) => onPlayerPointerDown(player, e)}
                   onPointerMove={onPlayerPointerMove}
                   onPointerUp={() => onPlayerPointerUp(player)}
+                  onPointerEnter={() => setHoveredPlayer(player.id)}
+                  onPointerLeave={() => setHoveredPlayer(null)}
                   style={{ cursor: tool === 'select' ? 'grab' : 'pointer', touchAction: 'none' }}
                   data-testid={`player-${player.id}`}
                 >
@@ -627,10 +667,42 @@ export default function PlaybookEditor() {
                     style={{ pointerEvents: 'none', userSelect: 'none' }}>
                     {cfg.label}
                   </text>
+                  {hasNote && (
+                    <g transform={`translate(${isOL ? 11 : 10}, ${isOL ? -11 : -10})`}>
+                      <circle r={5} fill={cfg.color} stroke="#000" strokeWidth={0.5} />
+                      <text textAnchor="middle" dominantBaseline="middle" fill="white"
+                        fontSize={8} fontWeight="bold" fontFamily="sans-serif"
+                        style={{ pointerEvents: 'none', userSelect: 'none' }}>!</text>
+                    </g>
+                  )}
                 </g>
               );
             })}
           </svg>
+
+          {hoveredPlayer && play.playerNotes?.[hoveredPlayer] && (() => {
+            const player = play.players.find(p => p.id === hoveredPlayer);
+            if (!player) return null;
+            const pos = getScreenXY(player.x, player.y);
+            const cfg = PLAYER_CFG[player.type];
+            return (
+              <div
+                className="absolute z-50 pointer-events-none"
+                style={{ left: pos.x + 20, top: pos.y - 10 }}
+              >
+                <div className="bg-black/95 border rounded-lg px-2.5 py-1.5 shadow-lg max-w-[200px]"
+                  style={{ borderColor: cfg.color + '60' }}>
+                  <div className="flex items-center gap-1 mb-0.5">
+                    <span className="text-[9px] font-bold font-mono" style={{ color: cfg.color }}>{cfg.label}</span>
+                    <span className="text-[9px] text-white/40">jegyzet</span>
+                  </div>
+                  <p className="text-[10px] text-white/80 whitespace-pre-wrap leading-tight">
+                    {play.playerNotes![hoveredPlayer]}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
 
           {tool === 'route' && selectedId && (
             <div className="absolute top-2 right-2 flex flex-col items-end gap-1.5">
@@ -735,25 +807,72 @@ export default function PlaybookEditor() {
         </div>
 
 
-        <div className="flex gap-2">
-          <Input
-            value={playName}
-            onChange={e => setPlayName(e.target.value)}
-            placeholder="Play neve (pl. Slant Right, HB Counter...)"
-            className="flex-1 bg-black/30 border-cyan-500/20 focus:border-cyan-400 h-9 text-sm"
-            onKeyDown={e => { if (e.key === 'Enter' && playName.trim()) saveMutation.mutate(); }}
-            data-testid="input-play-name"
+        <div className="flex flex-col gap-1.5">
+          <div className="flex gap-2">
+            <Input
+              value={playName}
+              onChange={e => setPlayName(e.target.value)}
+              placeholder="Play neve (pl. Slant Right, HB Counter...)"
+              className="flex-1 bg-black/30 border-cyan-500/20 focus:border-cyan-400 h-9 text-sm"
+              onKeyDown={e => { if (e.key === 'Enter' && playName.trim()) saveMutation.mutate(); }}
+              data-testid="input-play-name"
+            />
+            <Button
+              onClick={() => saveMutation.mutate()}
+              disabled={saveMutation.isPending || !playName.trim()}
+              className="bg-cyan-500 hover:bg-cyan-400 text-black font-bold shrink-0"
+              data-testid="button-save-play"
+            >
+              <Save className="w-4 h-4 mr-1" />
+              {editingId ? 'Frissítés' : 'Mentés'}
+            </Button>
+          </div>
+          <textarea
+            value={playNote}
+            onChange={e => setPlayNote(e.target.value)}
+            placeholder="Play jegyzet (opcionális)..."
+            rows={2}
+            className="w-full bg-black/30 border border-cyan-500/20 focus:border-cyan-400 rounded-md px-3 py-1.5 text-xs text-white/80 resize-none placeholder:text-white/20 focus:outline-none"
+            data-testid="input-play-note"
           />
-          <Button
-            onClick={() => saveMutation.mutate()}
-            disabled={saveMutation.isPending || !playName.trim()}
-            className="bg-cyan-500 hover:bg-cyan-400 text-black font-bold shrink-0"
-            data-testid="button-save-play"
-          >
-            <Save className="w-4 h-4 mr-1" />
-            {editingId ? 'Frissítés' : 'Mentés'}
-          </Button>
         </div>
+
+        {editingPlayerNote && (() => {
+          const player = play.players.find(p => p.id === editingPlayerNote);
+          if (!player) return null;
+          const cfg = PLAYER_CFG[player.type];
+          return (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60" onClick={() => setEditingPlayerNote(null)}>
+              <div className="bg-[#0f1117] border rounded-xl p-4 w-72 shadow-2xl" style={{ borderColor: cfg.color + '40' }} onClick={e => e.stopPropagation()}>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{ background: cfg.color }}>
+                    {cfg.label}
+                  </div>
+                  <span className="text-sm font-bold text-white">{cfg.label} — Jegyzet</span>
+                </div>
+                <textarea
+                  autoFocus
+                  value={playerNoteText}
+                  onChange={e => setPlayerNoteText(e.target.value)}
+                  placeholder="Írj jegyzetet ehhez a játékoshoz..."
+                  rows={3}
+                  className="w-full bg-black/50 border border-cyan-500/20 focus:border-cyan-400 rounded-md px-3 py-2 text-xs text-white/90 resize-none placeholder:text-white/20 focus:outline-none mb-3"
+                  data-testid="input-player-note"
+                />
+                <div className="flex gap-2 justify-end">
+                  <button onClick={() => setEditingPlayerNote(null)}
+                    className="px-3 py-1 text-xs text-white/50 hover:text-white/80 rounded border border-white/10">
+                    Mégse
+                  </button>
+                  <button onClick={savePlayerNote} data-testid="button-save-player-note"
+                    className="px-3 py-1 text-xs font-bold rounded text-black" style={{ background: cfg.color }}>
+                    Mentés
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

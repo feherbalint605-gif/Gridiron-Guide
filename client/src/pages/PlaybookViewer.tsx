@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -100,6 +100,7 @@ function FieldSVG({ play }: { play: PlayData }) {
       {play.players.map(player => {
         const cfg = PLAYER_CFG[player.type];
         const isOL = OL_TYPES.includes(player.type);
+        const hasNote = !!(play.playerNotes?.[player.id]);
         return (
           <g key={player.id} transform={`translate(${player.x},${player.y})`}>
             {isOL ? (
@@ -112,6 +113,14 @@ function FieldSVG({ play }: { play: PlayData }) {
               style={{ pointerEvents: 'none' }}>
               {cfg.label}
             </text>
+            {hasNote && (
+              <g transform={`translate(${isOL ? 11 : 10}, ${isOL ? -11 : -10})`}>
+                <circle r={5} fill={cfg.color} stroke="#000" strokeWidth={0.5} />
+                <text textAnchor="middle" dominantBaseline="middle" fill="white"
+                  fontSize={8} fontWeight="bold" fontFamily="sans-serif"
+                  style={{ pointerEvents: 'none' }}>!</text>
+              </g>
+            )}
           </g>
         );
       })}
@@ -182,6 +191,30 @@ export default function PlaybookViewer() {
       )}
 
       <FieldSVG play={current.data} />
+
+      {current.data.note && (
+        <div className="bg-black/30 border border-cyan-500/15 rounded-lg px-3 py-2" data-testid="text-play-note">
+          <p className="text-[10px] text-cyan-400/40 font-mono uppercase tracking-wider mb-0.5">Jegyzet</p>
+          <p className="text-xs text-white/70 whitespace-pre-wrap">{current.data.note}</p>
+        </div>
+      )}
+
+      {current.data.playerNotes && Object.keys(current.data.playerNotes).length > 0 && (
+        <div className="bg-black/30 border border-cyan-500/15 rounded-lg px-3 py-2 space-y-1.5" data-testid="player-notes-section">
+          <p className="text-[10px] text-cyan-400/40 font-mono uppercase tracking-wider">Játékos jegyzetek</p>
+          {Object.entries(current.data.playerNotes).map(([pid, note]) => {
+            const player = current.data.players.find(p => p.id === pid);
+            if (!player) return null;
+            const cfg = PLAYER_CFG[player.type];
+            return (
+              <div key={pid} className="flex items-start gap-2">
+                <span className="text-[10px] font-bold font-mono shrink-0 mt-0.5" style={{ color: cfg.color }}>{cfg.label}</span>
+                <span className="text-[10px] text-white/60">{note}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-3 justify-center pt-1">
         {[

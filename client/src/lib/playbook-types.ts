@@ -50,6 +50,8 @@ export interface PlayData {
   losY: number;
   players: PlayPlayer[];
   routes: PlayRoute[];
+  note?: string;
+  playerNotes?: Record<string, string>;
 }
 
 export interface SavedPlay {
