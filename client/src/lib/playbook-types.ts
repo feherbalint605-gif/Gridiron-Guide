@@ -57,6 +57,7 @@ export interface PlayData {
 export interface SavedPlay {
   id: number;
   name: string;
+  folder: string;
   data: PlayData;
 }
 

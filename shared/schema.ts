@@ -96,6 +96,7 @@ export const playbookPlays = pgTable("playbook_plays", {
   id: serial("id").primaryKey(),
   coachId: text("coach_id").notNull(),
   name: text("name").notNull(),
+  folder: text("folder").default("Általános").notNull(),
   data: jsonb("data").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });

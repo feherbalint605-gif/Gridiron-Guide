@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { MousePointer, Pen, Plus, Trash2, Save, Check, X, FilePlus, AlertCircle, MessageSquare } from "lucide-react";
+import { MousePointer, Pen, Plus, Trash2, Save, Check, X, FilePlus, AlertCircle, MessageSquare, FolderOpen, FolderPlus, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -32,6 +32,10 @@ export default function PlaybookEditor() {
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastMoveTimeRef = useRef<number>(0);
   const [playNote, setPlayNote] = useState('');
+  const [playFolder, setPlayFolder] = useState('Általános');
+  const [newFolderName, setNewFolderName] = useState('');
+  const [showNewFolder, setShowNewFolder] = useState(false);
+  const [openFolder, setOpenFolder] = useState<string | null>(null);
   const [editingPlayerNote, setEditingPlayerNote] = useState<string | null>(null);
   const [playerNoteText, setPlayerNoteText] = useState('');
   const [hoveredPlayer, setHoveredPlayer] = useState<string | null>(null);
@@ -42,7 +46,7 @@ export default function PlaybookEditor() {
     mutationFn: async () => {
       if (!playName.trim()) throw new Error('Add nevet a play-nek!');
       const playData: PlayData = { ...play, note: playNote.trim() || undefined };
-      const body = { name: playName.trim(), data: playData };
+      const body = { name: playName.trim(), folder: playFolder, data: playData };
       try {
         const res = editingId
           ? await apiRequest('PUT', `/api/playbook/${editingId}`, body)
@@ -119,6 +123,7 @@ export default function PlaybookEditor() {
     setPlay(data);
     setPlayName(p.name);
     setPlayNote(data.note || '');
+    setPlayFolder(p.folder || 'Általános');
     setEditingId(p.id);
     setSelectedId(null);
     setRoutePts(null);
@@ -131,6 +136,7 @@ export default function PlaybookEditor() {
     setPlay(makeDefaultPlay());
     setPlayName('');
     setPlayNote('');
+    setPlayFolder(openFolder || 'Általános');
     setEditingId(null);
     setSelectedId(null);
     setRoutePts(null);
@@ -423,38 +429,93 @@ export default function PlaybookEditor() {
 
   return (
     <div className="flex gap-4 h-full" data-testid="playbook-editor">
-      <div className="w-44 shrink-0 flex flex-col gap-2">
+      <div className="w-48 shrink-0 flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <span className="text-xs font-mono uppercase text-cyan-400 tracking-widest">Playbook</span>
-          <button onClick={newPlay} className="text-cyan-400 hover:text-cyan-300" title="Új play" data-testid="button-new-play">
-            <FilePlus className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button onClick={() => { setShowNewFolder(true); setNewFolderName(''); }} className="text-cyan-400/60 hover:text-cyan-300" title="Új mappa" data-testid="button-new-folder">
+              <FolderPlus className="w-4 h-4" />
+            </button>
+            <button onClick={newPlay} className="text-cyan-400 hover:text-cyan-300" title="Új play" data-testid="button-new-play">
+              <FilePlus className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-        <div className="space-y-1 max-h-[420px] overflow-y-auto pr-1">
+        {showNewFolder && (
+          <div className="flex gap-1">
+            <Input
+              value={newFolderName}
+              onChange={e => setNewFolderName(e.target.value)}
+              placeholder="Mappa neve..."
+              className="flex-1 bg-black/30 border-cyan-500/20 h-7 text-xs"
+              autoFocus
+              onKeyDown={e => {
+                if (e.key === 'Enter' && newFolderName.trim()) { setPlayFolder(newFolderName.trim()); setOpenFolder(newFolderName.trim()); setShowNewFolder(false); }
+                if (e.key === 'Escape') setShowNewFolder(false);
+              }}
+              data-testid="input-new-folder"
+            />
+            <button onClick={() => { if (newFolderName.trim()) { setPlayFolder(newFolderName.trim()); setOpenFolder(newFolderName.trim()); setShowNewFolder(false); } }}
+              className="text-cyan-400 hover:text-cyan-300" data-testid="button-confirm-folder">
+              <Check className="w-3.5 h-3.5" />
+            </button>
+            <button onClick={() => setShowNewFolder(false)} className="text-muted-foreground hover:text-white">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+        <div className="space-y-0.5 max-h-[420px] overflow-y-auto pr-1">
           {plays.length === 0 && (
             <p className="text-xs text-muted-foreground/50 text-center py-6">Nincs mentett play</p>
           )}
-          {plays.map(p => (
-            <div
-              key={p.id}
-              onClick={() => loadPlay(p)}
-              data-testid={`play-item-${p.id}`}
-              className={cn(
-                "group flex items-center gap-1 px-2 py-1.5 rounded text-sm cursor-pointer transition-colors",
-                editingId === p.id ? "bg-cyan-500 text-black font-bold" : "hover:bg-white/5 text-foreground"
-              )}
-            >
-              <span className="flex-1 truncate text-xs">{p.name}</span>
-              <button
-                onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(p.id); }}
-                data-testid={`button-delete-play-${p.id}`}
-                className={cn("opacity-0 group-hover:opacity-100 transition-opacity shrink-0",
-                  editingId === p.id ? "text-black/50 hover:text-black" : "text-muted-foreground hover:text-red-400")}
-              >
-                <Trash2 className="w-3 h-3" />
-              </button>
-            </div>
-          ))}
+          {(() => {
+            const folders: Record<string, SavedPlay[]> = {};
+            plays.forEach(p => {
+              const f = p.folder || 'Általános';
+              if (!folders[f]) folders[f] = [];
+              folders[f].push(p);
+            });
+            return Object.entries(folders).sort(([a], [b]) => a.localeCompare(b)).map(([folder, folderPlays]) => (
+              <div key={folder} data-testid={`folder-${folder}`}>
+                <button
+                  onClick={() => setOpenFolder(prev => prev === folder ? null : folder)}
+                  className={cn("flex items-center gap-1 w-full px-1.5 py-1 rounded text-xs font-bold transition-colors",
+                    openFolder === folder ? "text-cyan-400 bg-cyan-500/10" : "text-cyan-400/60 hover:text-cyan-300 hover:bg-white/5")}
+                  data-testid={`button-folder-${folder}`}
+                >
+                  <ChevronRight className={cn("w-3 h-3 transition-transform", openFolder === folder && "rotate-90")} />
+                  <FolderOpen className="w-3 h-3" />
+                  <span className="flex-1 text-left truncate">{folder}</span>
+                  <span className="text-[10px] text-cyan-400/30">{folderPlays.length}</span>
+                </button>
+                {openFolder === folder && (
+                  <div className="ml-3 mt-0.5 space-y-0.5 border-l border-cyan-500/10 pl-1.5">
+                    {folderPlays.map(p => (
+                      <div
+                        key={p.id}
+                        onClick={() => loadPlay(p)}
+                        data-testid={`play-item-${p.id}`}
+                        className={cn(
+                          "group flex items-center gap-1 px-2 py-1 rounded text-xs cursor-pointer transition-colors",
+                          editingId === p.id ? "bg-cyan-500 text-black font-bold" : "hover:bg-white/5 text-foreground"
+                        )}
+                      >
+                        <span className="flex-1 truncate">{p.name}</span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(p.id); }}
+                          data-testid={`button-delete-play-${p.id}`}
+                          className={cn("opacity-0 group-hover:opacity-100 transition-opacity shrink-0",
+                            editingId === p.id ? "text-black/50 hover:text-black" : "text-muted-foreground hover:text-red-400")}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ));
+          })()}
         </div>
       </div>
 
@@ -829,6 +890,19 @@ export default function PlaybookEditor() {
               <Save className="w-4 h-4 mr-1" />
               {saveMutation.isPending ? 'Mentés...' : editingId ? 'Frissítés' : 'Mentés'}
             </Button>
+          </div>
+          <div className="flex gap-2 items-center">
+            <FolderOpen className="w-3.5 h-3.5 text-cyan-400/50 shrink-0" />
+            <select
+              value={playFolder}
+              onChange={e => setPlayFolder(e.target.value)}
+              className="flex-1 bg-black/30 border border-cyan-500/20 focus:border-cyan-400 rounded-md px-2 py-1 text-xs text-white/80 focus:outline-none appearance-none cursor-pointer"
+              data-testid="select-play-folder"
+            >
+              {[...new Set([playFolder, ...plays.map(p => p.folder || 'Általános')])].sort().map(f => (
+                <option key={f} value={f} className="bg-black text-white">{f}</option>
+              ))}
+            </select>
           </div>
           <textarea
             value={playNote}

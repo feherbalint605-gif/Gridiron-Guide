@@ -257,10 +257,11 @@ export async function registerRoutes(
   app.post("/api/playbook", async (req, res) => {
     const coachId = await requireCoach(req, res);
     if (!coachId) return;
-    const { name, data } = req.body;
+    const { name, data, folder } = req.body;
     if (!name || typeof name !== 'string' || !name.trim()) return res.status(400).json({ message: "Name required" });
     if (!data || typeof data !== 'object') return res.status(400).json({ message: "Invalid play data" });
-    const [play] = await db.insert(playbookPlays).values({ coachId, name: name.trim(), data }).returning();
+    const folderName = (typeof folder === 'string' && folder.trim()) ? folder.trim() : 'Általános';
+    const [play] = await db.insert(playbookPlays).values({ coachId, name: name.trim(), folder: folderName, data }).returning();
     res.json(play);
   });
 
@@ -268,10 +269,11 @@ export async function registerRoutes(
     const coachId = await requireCoach(req, res);
     if (!coachId) return;
     const id = parseInt(req.params.id);
-    const { name, data } = req.body;
+    const { name, data, folder } = req.body;
     if (!name || typeof name !== 'string' || !name.trim()) return res.status(400).json({ message: "Name required" });
     if (!data || typeof data !== 'object') return res.status(400).json({ message: "Invalid play data" });
-    const [play] = await db.update(playbookPlays).set({ name: name.trim(), data }).where(
+    const folderName = (typeof folder === 'string' && folder.trim()) ? folder.trim() : 'Általános';
+    const [play] = await db.update(playbookPlays).set({ name: name.trim(), folder: folderName, data }).where(
       and(eq(playbookPlays.id, id), eq(playbookPlays.coachId, coachId))
     ).returning();
     if (!play) return res.status(404).json({ message: "Not found" });
