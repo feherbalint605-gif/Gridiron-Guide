@@ -9,6 +9,9 @@ import {
 
 function FieldSVG({ play }: { play: PlayData }) {
   const losY = play.losY;
+  const svgRef = useRef<SVGSVGElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [activeNote, setActiveNote] = useState<string | null>(null);
 
   const getStrokeDash = (style?: RouteLineStyle): string | undefined => {
     if (style === 'dashed') return '10 5';
@@ -34,8 +37,28 @@ function FieldSVG({ play }: { play: PlayData }) {
     );
   };
 
+  const getScreenPos = useCallback((svgX: number, svgY: number) => {
+    const svg = svgRef.current;
+    const container = containerRef.current;
+    if (!svg || !container) return { x: 0, y: 0 };
+    const svgRect = svg.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    return {
+      x: svgRect.left - containerRect.left + (svgX / W) * svgRect.width,
+      y: svgRect.top - containerRect.top + (svgY / H) * svgRect.height,
+    };
+  }, []);
+
+  const onPlayerClick = (playerId: string) => {
+    if (play.playerNotes?.[playerId]) {
+      setActiveNote(prev => prev === playerId ? null : playerId);
+    }
+  };
+
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full rounded-xl border border-cyan-500/20" style={{ background: '#0a0a0f' }}>
+    <div className="relative" ref={containerRef}>
+    <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="w-full rounded-xl border border-cyan-500/20 block" style={{ background: '#0a0a0f' }}
+      onClick={(e) => { if ((e.target as Element).tagName === 'svg') setActiveNote(null); }}>
       {yToYard(0) >= 0 && yToYard(0) <= H && (
         <g>
           <rect x={0} y={yToYard(0) - 2} width={W} height={20} fill="#22d3ee08" />
@@ -102,7 +125,10 @@ function FieldSVG({ play }: { play: PlayData }) {
         const isOL = OL_TYPES.includes(player.type);
         const hasNote = !!(play.playerNotes?.[player.id]);
         return (
-          <g key={player.id} transform={`translate(${player.x},${player.y})`}>
+          <g key={player.id} transform={`translate(${player.x},${player.y})`}
+            onClick={(e) => { e.stopPropagation(); onPlayerClick(player.id); }}
+            style={{ cursor: hasNote ? 'pointer' : 'default' }}>
+            {activeNote === player.id && <circle r={17} fill="none" stroke={cfg.color} strokeWidth={2} opacity={0.7} />}
             {isOL ? (
               <rect x={-11} y={-11} width={22} height={22} fill={cfg.color} rx={3} stroke={cfg.stroke} strokeWidth={1.5} />
             ) : (
@@ -125,6 +151,32 @@ function FieldSVG({ play }: { play: PlayData }) {
         );
       })}
     </svg>
+
+    {activeNote && play.playerNotes?.[activeNote] && (() => {
+      const player = play.players.find(p => p.id === activeNote);
+      if (!player) return null;
+      const pos = getScreenPos(player.x, player.y);
+      const cfg = PLAYER_CFG[player.type];
+      return (
+        <div
+          className="absolute z-50"
+          style={{ left: pos.x, top: pos.y - 20, transform: 'translate(-50%, -100%)' }}
+        >
+          <div className="bg-black/95 border rounded-lg px-3 py-2 shadow-xl max-w-[200px] text-center"
+            style={{ borderColor: cfg.color + '60' }}>
+            <p className="text-[10px] text-white/80 whitespace-pre-wrap leading-tight">
+              {play.playerNotes![activeNote]}
+            </p>
+          </div>
+          <div className="w-0 h-0 mx-auto" style={{
+            borderLeft: '6px solid transparent',
+            borderRight: '6px solid transparent',
+            borderTop: `6px solid ${cfg.color}60`,
+          }} />
+        </div>
+      );
+    })()}
+    </div>
   );
 }
 
@@ -196,23 +248,6 @@ export default function PlaybookViewer() {
         <div className="bg-black/30 border border-cyan-500/15 rounded-lg px-3 py-2" data-testid="text-play-note">
           <p className="text-[10px] text-cyan-400/40 font-mono uppercase tracking-wider mb-0.5">Jegyzet</p>
           <p className="text-xs text-white/70 whitespace-pre-wrap">{current.data.note}</p>
-        </div>
-      )}
-
-      {current.data.playerNotes && Object.keys(current.data.playerNotes).length > 0 && (
-        <div className="bg-black/30 border border-cyan-500/15 rounded-lg px-3 py-2 space-y-1.5" data-testid="player-notes-section">
-          <p className="text-[10px] text-cyan-400/40 font-mono uppercase tracking-wider">Játékos jegyzetek</p>
-          {Object.entries(current.data.playerNotes).map(([pid, note]) => {
-            const player = current.data.players.find(p => p.id === pid);
-            if (!player) return null;
-            const cfg = PLAYER_CFG[player.type];
-            return (
-              <div key={pid} className="flex items-start gap-2">
-                <span className="text-[10px] font-bold font-mono shrink-0 mt-0.5" style={{ color: cfg.color }}>{cfg.label}</span>
-                <span className="text-[10px] text-white/60">{note}</span>
-              </div>
-            );
-          })}
         </div>
       )}
 
