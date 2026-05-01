@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   W, H, YARD, PLAYER_CFG, OL_TYPES, ROUTE_TREE, LOS_OPTIONS,
   PlayerType, PlayPlayer, PlayRoute, PlayData, SavedPlay, RouteLineStyle, RouteEndStyle,
-  clamp, makeDefaultPlay, applyRouteTree, makeArrowPolygon, makeTeePoints, genId, snapLosToOption, yardFromY, yToYard
+  clamp, makeDefaultPlay, applyRouteTree, makeArrowPolygon, makeArrowPath, makeTeePoints, genId, snapLosToOption, yardFromY, yToYard
 } from "@/lib/playbook-types";
 
 export default function PlaybookEditor() {
@@ -415,7 +415,7 @@ export default function PlaybookEditor() {
     const from = pts[pts.length - 2];
     const to = pts[pts.length - 1];
     const endStyle = route.endStyle ?? 'arrow';
-    const arrow = endStyle === 'arrow' ? makeArrowPolygon(from, to) : '';
+    const arrowPath = endStyle === 'arrow' ? makeArrowPath(from, to) : '';
     const tee = endStyle === 'tee' ? makeTeePoints(from, to) : null;
     const dash = getStrokeDash(route.lineStyle);
     return (
@@ -423,7 +423,7 @@ export default function PlaybookEditor() {
         <path d={d} fill="none" stroke={cfg.color} strokeWidth={2.5}
           strokeLinejoin="round" strokeLinecap="round"
           strokeDasharray={dash} />
-        {arrow && <polygon points={arrow} fill={cfg.color} />}
+        {arrowPath && <path d={arrowPath} fill="none" stroke={cfg.color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />}
         {tee && <line x1={tee.x1} y1={tee.y1} x2={tee.x2} y2={tee.y2} stroke={cfg.color} strokeWidth={3} strokeLinecap="round" />}
       </g>
     );

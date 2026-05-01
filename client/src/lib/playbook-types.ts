@@ -155,3 +155,18 @@ export function makeArrowPolygon(from: [number, number], to: [number, number]): 
   const p2y = to[1] - sz * Math.sin(angle + sp);
   return `${to[0]},${to[1]} ${p1x.toFixed(1)},${p1y.toFixed(1)} ${p2x.toFixed(1)},${p2y.toFixed(1)}`;
 }
+
+export function makeArrowPath(from: [number, number], to: [number, number]): string {
+  const dx = to[0] - from[0];
+  const dy = to[1] - from[1];
+  const len = Math.sqrt(dx * dx + dy * dy);
+  if (len < 2) return '';
+  const angle = Math.atan2(dy, dx);
+  const sz = 12;
+  const sp = 0.5;
+  const p1x = to[0] - sz * Math.cos(angle - sp);
+  const p1y = to[1] - sz * Math.sin(angle - sp);
+  const p2x = to[0] - sz * Math.cos(angle + sp);
+  const p2y = to[1] - sz * Math.sin(angle + sp);
+  return `M ${p1x.toFixed(1)} ${p1y.toFixed(1)} L ${to[0].toFixed(1)} ${to[1].toFixed(1)} L ${p2x.toFixed(1)} ${p2y.toFixed(1)}`;
+}
