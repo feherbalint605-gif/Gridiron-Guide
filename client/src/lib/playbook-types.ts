@@ -40,10 +40,13 @@ export interface PlayPlayer {
 
 export type RouteLineStyle = 'solid' | 'dashed' | 'dotted';
 
+export type RouteEndStyle = 'arrow' | 'tee' | 'none';
+
 export interface PlayRoute {
   playerId: string;
   points: [number, number][];
   lineStyle?: RouteLineStyle;
+  endStyle?: RouteEndStyle;
 }
 
 export interface PlayData {
@@ -120,6 +123,22 @@ export function applyRouteTree(player: PlayPlayer, routeNum: number): [number, n
     pts.push([cx, cy]);
   }
   return pts;
+}
+
+export function makeTeePoints(from: [number, number], to: [number, number]): { x1: number; y1: number; x2: number; y2: number } | null {
+  const dx = to[0] - from[0];
+  const dy = to[1] - from[1];
+  const len = Math.sqrt(dx * dx + dy * dy);
+  if (len < 2) return null;
+  const perpX = -dy / len;
+  const perpY = dx / len;
+  const sz = 9;
+  return {
+    x1: to[0] + perpX * sz,
+    y1: to[1] + perpY * sz,
+    x2: to[0] - perpX * sz,
+    y2: to[1] - perpY * sz,
+  };
 }
 
 export function makeArrowPolygon(from: [number, number], to: [number, number]): string {

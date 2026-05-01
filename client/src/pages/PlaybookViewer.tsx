@@ -4,7 +4,7 @@ import { ChevronLeft, BookOpen, FolderOpen, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   W, H, YARD, PLAYER_CFG, OL_TYPES,
-  PlayPlayer, PlayRoute, PlayData, SavedPlay, RouteLineStyle, makeArrowPolygon, yardFromY, yToYard
+  PlayPlayer, PlayRoute, PlayData, SavedPlay, RouteLineStyle, makeArrowPolygon, makeTeePoints, yardFromY, yToYard
 } from "@/lib/playbook-types";
 
 function MiniFieldSVG({ play }: { play: PlayData }) {
@@ -37,12 +37,15 @@ function MiniFieldSVG({ play }: { play: PlayData }) {
         const d = 'M ' + pts.map(([x, y]) => `${x} ${y}`).join(' L ');
         const from = pts[pts.length - 2];
         const to = pts[pts.length - 1];
-        const arrow = makeArrowPolygon(from, to);
+        const endStyle = route.endStyle ?? 'arrow';
+        const arrow = endStyle === 'arrow' ? makeArrowPolygon(from, to) : '';
+        const tee = endStyle === 'tee' ? makeTeePoints(from, to) : null;
         const dash = getStrokeDash(route.lineStyle);
         return (
           <g key={route.playerId}>
             <path d={d} fill="none" stroke={cfg.color} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" strokeDasharray={dash} />
             {arrow && <polygon points={arrow} fill={cfg.color} />}
+            {tee && <line x1={tee.x1} y1={tee.y1} x2={tee.x2} y2={tee.y2} stroke={cfg.color} strokeWidth={3} strokeLinecap="round" />}
           </g>
         );
       })}
@@ -87,13 +90,16 @@ function FieldSVG({ play }: { play: PlayData }) {
     const d = 'M ' + pts.map(([x, y]) => `${x} ${y}`).join(' L ');
     const from = pts[pts.length - 2];
     const to = pts[pts.length - 1];
-    const arrow = makeArrowPolygon(from, to);
+    const endStyle = route.endStyle ?? 'arrow';
+    const arrow = endStyle === 'arrow' ? makeArrowPolygon(from, to) : '';
+    const tee = endStyle === 'tee' ? makeTeePoints(from, to) : null;
     const dash = getStrokeDash(route.lineStyle);
     return (
       <g key={route.playerId}>
         <path d={d} fill="none" stroke={cfg.color} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round"
           strokeDasharray={dash} />
         {arrow && <polygon points={arrow} fill={cfg.color} />}
+        {tee && <line x1={tee.x1} y1={tee.y1} x2={tee.x2} y2={tee.y2} stroke={cfg.color} strokeWidth={3} strokeLinecap="round" />}
       </g>
     );
   };

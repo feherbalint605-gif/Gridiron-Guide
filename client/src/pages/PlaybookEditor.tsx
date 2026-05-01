@@ -8,8 +8,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
   W, H, YARD, PLAYER_CFG, OL_TYPES, ROUTE_TREE, LOS_OPTIONS,
-  PlayerType, PlayPlayer, PlayRoute, PlayData, SavedPlay, RouteLineStyle,
-  clamp, makeDefaultPlay, applyRouteTree, makeArrowPolygon, genId, snapLosToOption, yardFromY, yToYard
+  PlayerType, PlayPlayer, PlayRoute, PlayData, SavedPlay, RouteLineStyle, RouteEndStyle,
+  clamp, makeDefaultPlay, applyRouteTree, makeArrowPolygon, makeTeePoints, genId, snapLosToOption, yardFromY, yToYard
 } from "@/lib/playbook-types";
 
 export default function PlaybookEditor() {
@@ -28,6 +28,7 @@ export default function PlaybookEditor() {
   const [showRouteMenu, setShowRouteMenu] = useState<{ x: number; y: number } | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [routeLineStyle, setRouteLineStyle] = useState<RouteLineStyle>('solid');
+  const [routeEndStyle, setRouteEndStyle] = useState<RouteEndStyle>('arrow');
   const [willStraighten, setWillStraighten] = useState(false);
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastMoveTimeRef = useRef<number>(0);
@@ -294,7 +295,7 @@ export default function PlaybookEditor() {
     const finalPts = doStraighten ? straightenPath(routePts) : simplifyFreehand(routePts);
     setPlay(p => ({
       ...p,
-      routes: [...p.routes.filter(r => r.playerId !== selectedId), { playerId: selectedId, points: finalPts, lineStyle: routeLineStyle }],
+      routes: [...p.routes.filter(r => r.playerId !== selectedId), { playerId: selectedId, points: finalPts, lineStyle: routeLineStyle, endStyle: routeEndStyle }],
     }));
     setRoutePts(null);
     setIsDrawing(false);
@@ -413,7 +414,9 @@ export default function PlaybookEditor() {
     const d = 'M ' + pts.map(([x, y]) => `${x} ${y}`).join(' L ');
     const from = pts[pts.length - 2];
     const to = pts[pts.length - 1];
-    const arrow = makeArrowPolygon(from, to);
+    const endStyle = route.endStyle ?? 'arrow';
+    const arrow = endStyle === 'arrow' ? makeArrowPolygon(from, to) : '';
+    const tee = endStyle === 'tee' ? makeTeePoints(from, to) : null;
     const dash = getStrokeDash(route.lineStyle);
     return (
       <g key={route.playerId}>
@@ -421,6 +424,7 @@ export default function PlaybookEditor() {
           strokeLinejoin="round" strokeLinecap="round"
           strokeDasharray={dash} />
         {arrow && <polygon points={arrow} fill={cfg.color} />}
+        {tee && <line x1={tee.x1} y1={tee.y1} x2={tee.x2} y2={tee.y2} stroke={cfg.color} strokeWidth={3} strokeLinecap="round" />}
       </g>
     );
   };
@@ -808,6 +812,44 @@ export default function PlaybookEditor() {
                           <line x1={0} y1={3} x2={20} y2={3} stroke="currentColor" strokeWidth={2}
                             strokeDasharray={style === 'dashed' ? '4 2' : style === 'dotted' ? '1.5 2' : undefined} />
                         </svg>
+                        {label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {!isDrawing && (
+                <div className="flex items-center gap-1 bg-black/80 rounded border border-cyan-500/20 p-0.5">
+                  <span className="text-[9px] text-cyan-400/50 px-1">Vég:</span>
+                  {([
+                    ['arrow', 'Nyíl', (
+                      <svg width={20} height={10} className="inline-block">
+                        <line x1={0} y1={5} x2={14} y2={5} stroke="currentColor" strokeWidth={2} />
+                        <polygon points="20,5 12,2 12,8" fill="currentColor" />
+                      </svg>
+                    )],
+                    ['tee', 'T-lezárás', (
+                      <svg width={20} height={10} className="inline-block">
+                        <line x1={0} y1={5} x2={16} y2={5} stroke="currentColor" strokeWidth={2} />
+                        <line x1={16} y1={1} x2={16} y2={9} stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" />
+                      </svg>
+                    )],
+                    ['none', 'Semmi', (
+                      <svg width={20} height={10} className="inline-block">
+                        <line x1={0} y1={5} x2={18} y2={5} stroke="currentColor" strokeWidth={2} />
+                      </svg>
+                    )],
+                  ] as [RouteEndStyle, string, JSX.Element][]).map(([style, label, icon]) => (
+                    <button key={style} onClick={() => setRouteEndStyle(style)}
+                      data-testid={`button-end-${style}`}
+                      className={cn(
+                        "px-1.5 py-0.5 text-[9px] rounded transition-colors",
+                        routeEndStyle === style
+                          ? "bg-cyan-500/30 text-cyan-300 font-bold"
+                          : "text-cyan-400/50 hover:text-cyan-300"
+                      )}>
+                      <span className="flex items-center gap-1">
+                        {icon}
                         {label}
                       </span>
                     </button>
