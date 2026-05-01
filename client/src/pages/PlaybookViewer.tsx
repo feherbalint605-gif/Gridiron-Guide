@@ -4,7 +4,7 @@ import { ChevronLeft, BookOpen, FolderOpen, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   W, H, YARD, PLAYER_CFG, OL_TYPES,
-  PlayPlayer, PlayRoute, PlayData, SavedPlay, RouteLineStyle, makeArrowPath, makeTeePoints, yardFromY, yToYard
+  PlayPlayer, PlayRoute, PlayData, SavedPlay, RouteLineStyle, makeArrowPath, makeTeePoints, getEndSegment, yardFromY, yToYard
 } from "@/lib/playbook-types";
 
 function MiniFieldSVG({ play }: { play: PlayData }) {
@@ -35,8 +35,7 @@ function MiniFieldSVG({ play }: { play: PlayData }) {
         const pts: [number, number][] = [[player.x, player.y], ...route.points];
         if (pts.length < 2) return null;
         const d = 'M ' + pts.map(([x, y]) => `${x} ${y}`).join(' L ');
-        const from = pts[pts.length - 2];
-        const to = pts[pts.length - 1];
+        const [from, to] = getEndSegment(pts);
         const endStyle = route.endStyle ?? 'arrow';
         const arrowPath = endStyle === 'arrow' ? makeArrowPath(from, to) : '';
         const tee = endStyle === 'tee' ? makeTeePoints(from, to) : null;
@@ -88,8 +87,7 @@ function FieldSVG({ play }: { play: PlayData }) {
     const pts: [number, number][] = [[player.x, player.y], ...route.points];
     if (pts.length < 2) return null;
     const d = 'M ' + pts.map(([x, y]) => `${x} ${y}`).join(' L ');
-    const from = pts[pts.length - 2];
-    const to = pts[pts.length - 1];
+    const [from, to] = getEndSegment(pts);
     const endStyle = route.endStyle ?? 'arrow';
     const arrowPath = endStyle === 'arrow' ? makeArrowPath(from, to) : '';
     const tee = endStyle === 'tee' ? makeTeePoints(from, to) : null;

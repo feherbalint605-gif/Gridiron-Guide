@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   W, H, YARD, PLAYER_CFG, OL_TYPES, ROUTE_TREE, LOS_OPTIONS,
   PlayerType, PlayPlayer, PlayRoute, PlayData, SavedPlay, RouteLineStyle, RouteEndStyle,
-  clamp, makeDefaultPlay, applyRouteTree, makeArrowPolygon, makeArrowPath, makeTeePoints, genId, snapLosToOption, yardFromY, yToYard
+  clamp, makeDefaultPlay, applyRouteTree, makeArrowPolygon, makeArrowPath, makeTeePoints, getEndSegment, genId, snapLosToOption, yardFromY, yToYard
 } from "@/lib/playbook-types";
 
 export default function PlaybookEditor() {
@@ -412,8 +412,7 @@ export default function PlaybookEditor() {
     const pts: [number, number][] = [[player.x, player.y], ...route.points];
     if (pts.length < 2) return null;
     const d = 'M ' + pts.map(([x, y]) => `${x} ${y}`).join(' L ');
-    const from = pts[pts.length - 2];
-    const to = pts[pts.length - 1];
+    const [from, to] = getEndSegment(pts);
     const endStyle = route.endStyle ?? 'arrow';
     const arrowPath = endStyle === 'arrow' ? makeArrowPath(from, to) : '';
     const tee = endStyle === 'tee' ? makeTeePoints(from, to) : null;

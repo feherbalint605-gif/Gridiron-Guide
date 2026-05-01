@@ -125,6 +125,19 @@ export function applyRouteTree(player: PlayPlayer, routeNum: number): [number, n
   return pts;
 }
 
+export function getEndSegment(pts: [number, number][], minDist = 10): [[number, number], [number, number]] {
+  const to = pts[pts.length - 1];
+  for (let i = pts.length - 2; i >= 0; i--) {
+    const from = pts[i];
+    const dx = to[0] - from[0];
+    const dy = to[1] - from[1];
+    if (Math.sqrt(dx * dx + dy * dy) >= minDist) {
+      return [from, to];
+    }
+  }
+  return [pts[Math.max(0, pts.length - 2)], to];
+}
+
 export function makeTeePoints(from: [number, number], to: [number, number]): { x1: number; y1: number; x2: number; y2: number } | null {
   const dx = to[0] - from[0];
   const dy = to[1] - from[1];
