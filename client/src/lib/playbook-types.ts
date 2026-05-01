@@ -47,6 +47,7 @@ export interface PlayRoute {
   points: [number, number][];
   lineStyle?: RouteLineStyle;
   endStyle?: RouteEndStyle;
+  speed?: number;
 }
 
 export interface PlayData {

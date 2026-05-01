@@ -254,6 +254,13 @@ export default function PlaybookEditor() {
     setShowRouteMenu(null);
   };
 
+  const setRouteSpeed = (playerId: string, speed: number) => {
+    setPlay(p => ({
+      ...p,
+      routes: p.routes.map(r => r.playerId === playerId ? { ...r, speed } : r),
+    }));
+  };
+
   const straightenPath = (raw: [number, number][]): [number, number][] => {
     if (raw.length <= 2) return raw;
     const step = 5;
@@ -752,7 +759,8 @@ export default function PlaybookEditor() {
                 const route = play.routes.find(r => r.playerId === player.id);
                 if (route && route.points.length > 0) {
                   const pts: [number, number][] = [[player.x, player.y], ...route.points];
-                  [px, py] = interpolatePolyline(pts, animProgress);
+                  const t = Math.min(animProgress * (route.speed ?? 1), 1);
+                  [px, py] = interpolatePolyline(pts, t);
                 }
               }
               return (
@@ -954,6 +962,34 @@ export default function PlaybookEditor() {
               </div>
             </div>
           )}
+          {(() => {
+            const selRoute = selectedId ? play.routes.find(r => r.playerId === selectedId) : null;
+            if (!selRoute || isAnimating) return null;
+            const speed = selRoute.speed ?? 1;
+            return (
+              <div className="absolute bottom-3 left-3 z-40 bg-black/85 border border-cyan-500/25 rounded-lg px-3 py-2 flex flex-col gap-1 min-w-[160px]">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-cyan-400/70 font-mono uppercase tracking-widest">Tempó</span>
+                  <span className="text-[11px] font-bold text-cyan-300">{speed === 1 ? 'Normál' : speed < 1 ? 'Lassú' : 'Gyors'} {speed}×</span>
+                </div>
+                <input
+                  type="range"
+                  min={0.25}
+                  max={2}
+                  step={0.25}
+                  value={speed}
+                  data-testid="slider-route-speed"
+                  onChange={e => setRouteSpeed(selectedId!, parseFloat(e.target.value))}
+                  className="w-full accent-cyan-400 h-1.5 cursor-pointer"
+                />
+                <div className="flex justify-between text-[9px] text-cyan-400/40 font-mono">
+                  <span>0.25×</span>
+                  <span>1×</span>
+                  <span>2×</span>
+                </div>
+              </div>
+            );
+          })()}
           <button
             onClick={playAnimation}
             disabled={isAnimating || play.routes.length === 0}

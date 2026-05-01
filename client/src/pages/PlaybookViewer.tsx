@@ -225,7 +225,8 @@ function FieldSVG({ play }: { play: PlayData }) {
           const route = play.routes.find(r => r.playerId === player.id);
           if (route && route.points.length > 0) {
             const pts: [number, number][] = [[player.x, player.y], ...route.points];
-            [px, py] = interpolatePolyline(pts, animProgress);
+            const t = Math.min(animProgress * (route.speed ?? 1), 1);
+            [px, py] = interpolatePolyline(pts, t);
           }
         }
         return (
