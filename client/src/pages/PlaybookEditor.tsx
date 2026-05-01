@@ -61,6 +61,7 @@ export default function PlaybookEditor() {
         animFrameRef.current = requestAnimationFrame(step);
       } else {
         setIsAnimating(false);
+        setAnimProgress(0);
         animStartRef.current = null;
       }
     };

@@ -96,6 +96,7 @@ function FieldSVG({ play }: { play: PlayData }) {
         animFrameRef.current = requestAnimationFrame(step);
       } else {
         setIsAnimating(false);
+        setAnimProgress(0);
         animStartRef.current = null;
       }
     };
