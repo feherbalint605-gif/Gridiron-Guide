@@ -50,14 +50,16 @@ export default function PlaybookEditor() {
   const playAnimation = () => {
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     animStartRef.current = null;
+    const speeds = play.routes.map(r => r.speed ?? 1);
+    const minSpeed = speeds.length > 0 ? Math.min(...speeds) : 1;
+    const totalDuration = ANIM_DURATION / minSpeed;
     setIsAnimating(true);
     setAnimProgress(0);
     const step = (ts: number) => {
       if (!animStartRef.current) animStartRef.current = ts;
-      const raw = Math.min((ts - animStartRef.current) / ANIM_DURATION, 1);
-      const t = raw * raw * (3 - 2 * raw);
-      setAnimProgress(t);
-      if (raw < 1) {
+      const elapsed = ts - animStartRef.current;
+      setAnimProgress(elapsed);
+      if (elapsed < totalDuration) {
         animFrameRef.current = requestAnimationFrame(step);
       } else {
         setIsAnimating(false);
@@ -758,8 +760,10 @@ export default function PlaybookEditor() {
               if (animProgress > 0) {
                 const route = play.routes.find(r => r.playerId === player.id);
                 if (route && route.points.length > 0) {
+                  const playerDuration = ANIM_DURATION / (route.speed ?? 1);
+                  const raw = Math.min(animProgress / playerDuration, 1);
+                  const t = raw * raw * (3 - 2 * raw);
                   const pts: [number, number][] = [[player.x, player.y], ...route.points];
-                  const t = Math.min(animProgress * (route.speed ?? 1), 1);
                   [px, py] = interpolatePolyline(pts, t);
                 }
               }
