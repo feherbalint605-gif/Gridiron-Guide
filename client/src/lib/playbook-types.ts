@@ -125,6 +125,35 @@ export function applyRouteTree(player: PlayPlayer, routeNum: number): [number, n
   return pts;
 }
 
+export function interpolatePolyline(pts: [number, number][], t: number): [number, number] {
+  if (pts.length === 0) return [0, 0];
+  if (pts.length === 1 || t <= 0) return pts[0];
+  if (t >= 1) return pts[pts.length - 1];
+  let totalLen = 0;
+  const segLens: number[] = [];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const dx = pts[i + 1][0] - pts[i][0];
+    const dy = pts[i + 1][1] - pts[i][1];
+    const len = Math.sqrt(dx * dx + dy * dy);
+    segLens.push(len);
+    totalLen += len;
+  }
+  if (totalLen === 0) return pts[pts.length - 1];
+  const target = t * totalLen;
+  let acc = 0;
+  for (let i = 0; i < segLens.length; i++) {
+    if (acc + segLens[i] >= target) {
+      const segT = segLens[i] > 0 ? (target - acc) / segLens[i] : 0;
+      return [
+        pts[i][0] + segT * (pts[i + 1][0] - pts[i][0]),
+        pts[i][1] + segT * (pts[i + 1][1] - pts[i][1]),
+      ];
+    }
+    acc += segLens[i];
+  }
+  return pts[pts.length - 1];
+}
+
 export function getEndSegment(pts: [number, number][], minDist = 10): [[number, number], [number, number]] {
   const to = pts[pts.length - 1];
   for (let i = pts.length - 2; i >= 0; i--) {

@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { MousePointer, Pen, Plus, Trash2, Save, Check, X, FilePlus, AlertCircle, MessageSquare, FolderOpen, FolderPlus, ChevronRight } from "lucide-react";
+import { MousePointer, Pen, Plus, Trash2, Save, Check, X, FilePlus, AlertCircle, MessageSquare, FolderOpen, FolderPlus, ChevronRight, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   W, H, YARD, PLAYER_CFG, OL_TYPES, ROUTE_TREE, LOS_OPTIONS,
   PlayerType, PlayPlayer, PlayRoute, PlayData, SavedPlay, RouteLineStyle, RouteEndStyle,
-  clamp, makeDefaultPlay, applyRouteTree, makeArrowPolygon, makeArrowPath, makeTeePoints, getEndSegment, genId, snapLosToOption, yardFromY, yToYard
+  clamp, makeDefaultPlay, applyRouteTree, makeArrowPolygon, makeArrowPath, makeTeePoints, getEndSegment, interpolatePolyline, genId, snapLosToOption, yardFromY, yToYard
 } from "@/lib/playbook-types";
 
 export default function PlaybookEditor() {
@@ -40,6 +40,42 @@ export default function PlaybookEditor() {
   const [editingPlayerNote, setEditingPlayerNote] = useState<string | null>(null);
   const [playerNoteText, setPlayerNoteText] = useState('');
   const [hoveredPlayer, setHoveredPlayer] = useState<string | null>(null);
+
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [animProgress, setAnimProgress] = useState(0);
+  const animFrameRef = useRef<number | null>(null);
+  const animStartRef = useRef<number | null>(null);
+  const ANIM_DURATION = 2500;
+
+  const playAnimation = () => {
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    animStartRef.current = null;
+    setIsAnimating(true);
+    setAnimProgress(0);
+    const step = (ts: number) => {
+      if (!animStartRef.current) animStartRef.current = ts;
+      const raw = Math.min((ts - animStartRef.current) / ANIM_DURATION, 1);
+      const t = raw * raw * (3 - 2 * raw);
+      setAnimProgress(t);
+      if (raw < 1) {
+        animFrameRef.current = requestAnimationFrame(step);
+      } else {
+        setIsAnimating(false);
+        animStartRef.current = null;
+      }
+    };
+    animFrameRef.current = requestAnimationFrame(step);
+  };
+
+  useEffect(() => {
+    return () => { if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current); };
+  }, []);
+
+  useEffect(() => {
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    setIsAnimating(false);
+    setAnimProgress(0);
+  }, [play]);
 
   const { data: plays = [] } = useQuery<SavedPlay[]>({ queryKey: ['/api/playbook'] });
 
@@ -710,16 +746,24 @@ export default function PlaybookEditor() {
               const sel = selectedId === player.id;
               const isOL = OL_TYPES.includes(player.type);
               const hasNote = !!(play.playerNotes?.[player.id]);
+              let px = player.x, py = player.y;
+              if (animProgress > 0) {
+                const route = play.routes.find(r => r.playerId === player.id);
+                if (route && route.points.length > 0) {
+                  const pts: [number, number][] = [[player.x, player.y], ...route.points];
+                  [px, py] = interpolatePolyline(pts, animProgress);
+                }
+              }
               return (
                 <g
                   key={player.id}
-                  transform={`translate(${player.x},${player.y})`}
-                  onPointerDown={(e) => onPlayerPointerDown(player, e)}
-                  onPointerMove={onPlayerPointerMove}
-                  onPointerUp={() => onPlayerPointerUp(player)}
+                  transform={`translate(${px},${py})`}
+                  onPointerDown={(e) => animProgress > 0 ? undefined : onPlayerPointerDown(player, e)}
+                  onPointerMove={animProgress > 0 ? undefined : onPlayerPointerMove}
+                  onPointerUp={animProgress > 0 ? undefined : () => onPlayerPointerUp(player)}
                   onPointerEnter={() => setHoveredPlayer(player.id)}
                   onPointerLeave={() => setHoveredPlayer(null)}
-                  style={{ cursor: tool === 'select' ? 'grab' : 'pointer', touchAction: 'none' }}
+                  style={{ cursor: animProgress > 0 ? 'default' : (tool === 'select' ? 'grab' : 'pointer'), touchAction: 'none' }}
                   data-testid={`player-${player.id}`}
                 >
                   {sel && <circle r={17} fill="none" stroke="#22d3ee" strokeWidth={2} opacity={0.8} />}
@@ -909,6 +953,26 @@ export default function PlaybookEditor() {
               </div>
             </div>
           )}
+          <button
+            onClick={playAnimation}
+            disabled={isAnimating || play.routes.length === 0}
+            data-testid="button-play-animation"
+            className={cn(
+              "absolute bottom-3 right-3 z-40 w-11 h-11 rounded-full flex items-center justify-center shadow-lg transition-all",
+              isAnimating
+                ? "bg-cyan-500/20 border border-cyan-500/30 cursor-not-allowed"
+                : play.routes.length === 0
+                  ? "bg-black/40 border border-cyan-500/10 cursor-not-allowed opacity-30"
+                  : "bg-cyan-500/90 border border-cyan-400 hover:bg-cyan-400 hover:scale-105 cursor-pointer"
+            )}
+            title="Play animáció indítása"
+          >
+            {isAnimating ? (
+              <div className="w-4 h-4 border-2 border-cyan-400/40 border-t-cyan-400 rounded-full animate-spin" />
+            ) : (
+              <Play className="w-5 h-5 text-black fill-black ml-0.5" />
+            )}
+          </button>
         </div>
 
 

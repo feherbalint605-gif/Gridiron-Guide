@@ -1,10 +1,10 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, BookOpen, FolderOpen, ArrowLeft } from "lucide-react";
+import { ChevronLeft, BookOpen, FolderOpen, ArrowLeft, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   W, H, YARD, PLAYER_CFG, OL_TYPES,
-  PlayPlayer, PlayRoute, PlayData, SavedPlay, RouteLineStyle, makeArrowPath, makeTeePoints, getEndSegment, yardFromY, yToYard
+  PlayPlayer, PlayRoute, PlayData, SavedPlay, RouteLineStyle, makeArrowPath, makeTeePoints, getEndSegment, interpolatePolyline, yardFromY, yToYard
 } from "@/lib/playbook-types";
 
 function MiniFieldSVG({ play }: { play: PlayData }) {
@@ -75,6 +75,36 @@ function FieldSVG({ play }: { play: PlayData }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeNote, setActiveNote] = useState<string | null>(null);
+
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [animProgress, setAnimProgress] = useState(0);
+  const animFrameRef = useRef<number | null>(null);
+  const animStartRef = useRef<number | null>(null);
+  const ANIM_DURATION = 2500;
+
+  const playAnimation = () => {
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    animStartRef.current = null;
+    setIsAnimating(true);
+    setAnimProgress(0);
+    const step = (ts: number) => {
+      if (!animStartRef.current) animStartRef.current = ts;
+      const raw = Math.min((ts - animStartRef.current) / ANIM_DURATION, 1);
+      const t = raw * raw * (3 - 2 * raw);
+      setAnimProgress(t);
+      if (raw < 1) {
+        animFrameRef.current = requestAnimationFrame(step);
+      } else {
+        setIsAnimating(false);
+        animStartRef.current = null;
+      }
+    };
+    animFrameRef.current = requestAnimationFrame(step);
+  };
+
+  useEffect(() => {
+    return () => { if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current); };
+  }, []);
 
   const getStrokeDash = (style?: RouteLineStyle): string | undefined => {
     if (style === 'dashed') return '10 5';
@@ -189,10 +219,18 @@ function FieldSVG({ play }: { play: PlayData }) {
         const cfg = PLAYER_CFG[player.type];
         const isOL = OL_TYPES.includes(player.type);
         const hasNote = !!(play.playerNotes?.[player.id]);
+        let px = player.x, py = player.y;
+        if (animProgress > 0) {
+          const route = play.routes.find(r => r.playerId === player.id);
+          if (route && route.points.length > 0) {
+            const pts: [number, number][] = [[player.x, player.y], ...route.points];
+            [px, py] = interpolatePolyline(pts, animProgress);
+          }
+        }
         return (
-          <g key={player.id} transform={`translate(${player.x},${player.y})`}
-            onClick={(e) => { e.stopPropagation(); onPlayerClick(player.id); }}
-            style={{ cursor: hasNote ? 'pointer' : 'default' }}>
+          <g key={player.id} transform={`translate(${px},${py})`}
+            onClick={(e) => { e.stopPropagation(); if (animProgress === 0) onPlayerClick(player.id); }}
+            style={{ cursor: hasNote && animProgress === 0 ? 'pointer' : 'default' }}>
             {activeNote === player.id && <circle r={17} fill="none" stroke={cfg.color} strokeWidth={2} opacity={0.7} />}
             {isOL ? (
               <rect x={-11} y={-11} width={22} height={22} fill={cfg.color} rx={3} stroke={cfg.stroke} strokeWidth={1.5} />
@@ -241,6 +279,27 @@ function FieldSVG({ play }: { play: PlayData }) {
         </div>
       );
     })()}
+
+    <button
+      onClick={playAnimation}
+      disabled={isAnimating || play.routes.length === 0}
+      data-testid="button-play-animation"
+      className={cn(
+        "absolute bottom-3 right-3 z-40 w-11 h-11 rounded-full flex items-center justify-center shadow-lg transition-all",
+        isAnimating
+          ? "bg-cyan-500/20 border border-cyan-500/30 cursor-not-allowed"
+          : play.routes.length === 0
+            ? "bg-black/40 border border-cyan-500/10 cursor-not-allowed opacity-30"
+            : "bg-cyan-500/90 border border-cyan-400 hover:bg-cyan-400 hover:scale-105 cursor-pointer"
+      )}
+      title="Play animáció indítása"
+    >
+      {isAnimating ? (
+        <div className="w-4 h-4 border-2 border-cyan-400/40 border-t-cyan-400 rounded-full animate-spin" />
+      ) : (
+        <Play className="w-5 h-5 text-black fill-black ml-0.5" />
+      )}
+    </button>
     </div>
   );
 }
