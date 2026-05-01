@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, BookOpen, FolderOpen, ArrowLeft, Play } from "lucide-react";
+import { ChevronLeft, ChevronRight, BookOpen, FolderOpen, ArrowLeft, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   W, H, YARD, PLAYER_CFG, OL_TYPES,
@@ -343,23 +343,75 @@ export default function PlaybookViewer() {
 
   if (view.mode === 'detail') {
     const current = view.play;
+    const folderName = current.folder || 'Általános';
+    const folderPlays = folders[folderName] || [];
+    const currentIndex = folderPlays.findIndex(p => p.id === current.id);
+    const prevPlay = currentIndex > 0 ? folderPlays[currentIndex - 1] : null;
+    const nextPlay = currentIndex < folderPlays.length - 1 ? folderPlays[currentIndex + 1] : null;
+
     return (
       <div className="space-y-4 max-w-3xl mx-auto" data-testid="playbook-viewer-detail">
-        <button
-          onClick={() => setView({ mode: 'plays', folder: current.folder || 'Általános' })}
-          className="flex items-center gap-1.5 text-cyan-400/70 hover:text-cyan-400 text-xs transition-colors"
-          data-testid="button-back-to-plays"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Vissza: {current.folder || 'Általános'}</span>
-        </button>
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => setView({ mode: 'plays', folder: folderName })}
+            className="flex items-center gap-1.5 text-cyan-400/70 hover:text-cyan-400 text-xs transition-colors"
+            data-testid="button-back-to-plays"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Vissza: {folderName}</span>
+          </button>
+          <span className="text-[10px] text-cyan-400/30 font-mono">
+            {currentIndex + 1} / {folderPlays.length}
+          </span>
+        </div>
 
         <div className="text-center">
           <p className="font-bold text-foreground text-lg" data-testid="text-play-name">{current.name}</p>
-          <p className="text-xs text-cyan-400/40">{current.folder || 'Általános'}</p>
+          <p className="text-xs text-cyan-400/40">{folderName}</p>
         </div>
 
-        <FieldSVG play={current.data} />
+        <div className="relative flex items-center gap-2">
+          <button
+            onClick={() => prevPlay && setView({ mode: 'detail', play: prevPlay })}
+            disabled={!prevPlay}
+            data-testid="button-prev-play"
+            className={cn(
+              "shrink-0 w-9 h-9 rounded-full flex items-center justify-center border transition-all",
+              prevPlay
+                ? "border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-400 cursor-pointer"
+                : "border-cyan-500/10 text-cyan-400/20 cursor-not-allowed"
+            )}
+            title={prevPlay ? prevPlay.name : undefined}
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+
+          <div className="flex-1">
+            <FieldSVG play={current.data} />
+          </div>
+
+          <button
+            onClick={() => nextPlay && setView({ mode: 'detail', play: nextPlay })}
+            disabled={!nextPlay}
+            data-testid="button-next-play"
+            className={cn(
+              "shrink-0 w-9 h-9 rounded-full flex items-center justify-center border transition-all",
+              nextPlay
+                ? "border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-400 cursor-pointer"
+                : "border-cyan-500/10 text-cyan-400/20 cursor-not-allowed"
+            )}
+            title={nextPlay ? nextPlay.name : undefined}
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+
+        {prevPlay || nextPlay ? (
+          <div className="flex justify-between text-[10px] text-cyan-400/35 font-mono px-11">
+            <span>{prevPlay ? `← ${prevPlay.name}` : ''}</span>
+            <span>{nextPlay ? `${nextPlay.name} →` : ''}</span>
+          </div>
+        ) : null}
 
         {current.data.note && (
           <div className="bg-black/30 border border-cyan-500/15 rounded-lg px-3 py-2" data-testid="text-play-note">
