@@ -5,8 +5,8 @@ import { api } from "@shared/routes";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import { db } from "./db";
 import { users } from "@shared/models/auth";
-import { workoutLogs, athletePlanOverrides, coachComments, playbookPlays } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { workoutLogs, athletePlanOverrides, coachComments, playbookPlays, teams, teamMembers, teamMessages } from "@shared/schema";
+import { eq, and, inArray } from "drizzle-orm";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -337,6 +337,133 @@ export async function registerRoutes(
       console.error("Error saving workout log:", error);
       res.status(500).json({ message: "Hiba történt a mentés során." });
     }
+  });
+
+  // ── Teams ──
+
+  // Coach: list my teams with members
+  app.get("/api/coach/teams", async (req, res) => {
+    const coachId = await requireCoach(req, res);
+    if (!coachId) return;
+    const myTeams = await db.select().from(teams).where(eq(teams.coachId, coachId));
+    const result = await Promise.all(myTeams.map(async (team) => {
+      const memberRows = await db.select().from(teamMembers).where(eq(teamMembers.teamId, team.id));
+      const memberIds = memberRows.map(r => r.userId);
+      const members = memberIds.length > 0
+        ? await db.select().from(users).where(inArray(users.id, memberIds))
+        : [];
+      return { ...team, members };
+    }));
+    res.json(result);
+  });
+
+  // Coach: create team
+  app.post("/api/coach/teams", async (req, res) => {
+    const coachId = await requireCoach(req, res);
+    if (!coachId) return;
+    const { name } = req.body;
+    if (!name?.trim()) return res.status(400).json({ message: "Név megadása kötelező" });
+    const [team] = await db.insert(teams).values({ coachId, name: name.trim() }).returning();
+    res.json({ ...team, members: [] });
+  });
+
+  // Coach: rename team
+  app.patch("/api/coach/teams/:id", async (req, res) => {
+    const coachId = await requireCoach(req, res);
+    if (!coachId) return;
+    const id = parseInt(req.params.id);
+    const { name } = req.body;
+    if (!name?.trim()) return res.status(400).json({ message: "Név megadása kötelező" });
+    const [team] = await db.update(teams).set({ name: name.trim() }).where(and(eq(teams.id, id), eq(teams.coachId, coachId))).returning();
+    if (!team) return res.status(404).json({ message: "Nem található" });
+    res.json(team);
+  });
+
+  // Coach: delete team
+  app.delete("/api/coach/teams/:id", async (req, res) => {
+    const coachId = await requireCoach(req, res);
+    if (!coachId) return;
+    const id = parseInt(req.params.id);
+    await db.delete(teamMessages).where(eq(teamMessages.teamId, id));
+    await db.delete(teamMembers).where(eq(teamMembers.teamId, id));
+    await db.delete(teams).where(and(eq(teams.id, id), eq(teams.coachId, coachId)));
+    res.sendStatus(204);
+  });
+
+  // Coach: add member to team
+  app.post("/api/coach/teams/:id/members", async (req, res) => {
+    const coachId = await requireCoach(req, res);
+    if (!coachId) return;
+    const teamId = parseInt(req.params.id);
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ message: "userId szükséges" });
+    // Remove from any other team of this coach first
+    const myTeams = await db.select().from(teams).where(eq(teams.coachId, coachId));
+    const myTeamIds = myTeams.map(t => t.id);
+    if (myTeamIds.length > 0) {
+      await db.delete(teamMembers).where(and(inArray(teamMembers.teamId, myTeamIds), eq(teamMembers.userId, userId)));
+    }
+    await db.insert(teamMembers).values({ teamId, userId }).onConflictDoNothing();
+    res.sendStatus(200);
+  });
+
+  // Coach: remove member from team
+  app.delete("/api/coach/teams/:id/members/:userId", async (req, res) => {
+    const coachId = await requireCoach(req, res);
+    if (!coachId) return;
+    const teamId = parseInt(req.params.id);
+    const { userId } = req.params;
+    await db.delete(teamMembers).where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId)));
+    res.sendStatus(200);
+  });
+
+  // Any auth user: get team info
+  app.get("/api/team/:teamId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const teamId = parseInt(req.params.teamId);
+    const [team] = await db.select().from(teams).where(eq(teams.id, teamId));
+    if (!team) return res.status(404).json({ message: "Nem található" });
+    const memberRows = await db.select().from(teamMembers).where(eq(teamMembers.teamId, teamId));
+    const memberIds = memberRows.map(r => r.userId);
+    const members = memberIds.length > 0 ? await db.select().from(users).where(inArray(users.id, memberIds)) : [];
+    res.json({ ...team, members });
+  });
+
+  // Any auth user: get team messages
+  app.get("/api/team/:teamId/messages", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const teamId = parseInt(req.params.teamId);
+    const msgs = await db.select().from(teamMessages).where(eq(teamMessages.teamId, teamId));
+    res.json(msgs);
+  });
+
+  // Any auth user: post message to team
+  app.post("/api/team/:teamId/messages", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const user = req.user as any;
+    const authorId = user.claims?.sub;
+    if (!authorId) return res.sendStatus(401);
+    const teamId = parseInt(req.params.teamId);
+    const { content } = req.body;
+    if (!content?.trim()) return res.status(400).json({ message: "Üzenet nem lehet üres" });
+    const [msg] = await db.insert(teamMessages).values({ teamId, authorId, content: content.trim() }).returning();
+    res.json(msg);
+  });
+
+  // Athlete: get my team
+  app.get("/api/my-team", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const user = req.user as any;
+    const userId = user.claims?.sub;
+    if (!userId) return res.sendStatus(401);
+    const [membership] = await db.select().from(teamMembers).where(eq(teamMembers.userId, userId));
+    if (!membership) return res.json(null);
+    const [team] = await db.select().from(teams).where(eq(teams.id, membership.teamId));
+    if (!team) return res.json(null);
+    const memberRows = await db.select().from(teamMembers).where(eq(teamMembers.teamId, team.id));
+    const memberIds = memberRows.map(r => r.userId);
+    const members = memberIds.length > 0 ? await db.select().from(users).where(inArray(users.id, memberIds)) : [];
+    res.json({ ...team, members });
   });
 
   return httpServer;

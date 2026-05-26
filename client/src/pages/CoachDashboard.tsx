@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, ChevronDown, ChevronUp, Dumbbell, Utensils, BarChart3, User, Save, MessageSquare, Plus, Trash2, RefreshCw, BookOpen } from "lucide-react";
+import { Users, ChevronDown, ChevronUp, Dumbbell, Utensils, BarChart3, User, Save, MessageSquare, Plus, Trash2, RefreshCw, BookOpen, UserPlus, ExternalLink, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { User as UserType } from "@shared/models/auth";
 import PlaybookEditor from "./PlaybookEditor";
+import TeamChat from "./TeamChat";
+import { Link } from "wouter";
 
 type Tab = "workout" | "diet" | "tracking";
 
@@ -482,12 +484,200 @@ function AthleteCard({ athlete }: { athlete: UserType }) {
   );
 }
 
+interface TeamWithMembers {
+  id: number;
+  name: string;
+  coachId: string;
+  members: UserType[];
+}
+
+function TeamsTab({ athletes, onOpenChat }: { athletes: UserType[]; onOpenChat: (id: number) => void }) {
+  const { toast } = useToast();
+  const [newTeamName, setNewTeamName] = useState("");
+
+  const { data: teams = [], isLoading } = useQuery<TeamWithMembers[]>({
+    queryKey: ["/api/coach/teams"],
+  });
+
+  const createTeam = useMutation({
+    mutationFn: async (name: string) => (await apiRequest("POST", "/api/coach/teams", { name })).json(),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/coach/teams"] }); setNewTeamName(""); },
+    onError: () => toast({ title: "Hiba", description: "Nem sikerült létrehozni a csapatot.", variant: "destructive" }),
+  });
+
+  const deleteTeam = useMutation({
+    mutationFn: async (id: number) => apiRequest("DELETE", `/api/coach/teams/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/coach/teams"] }),
+  });
+
+  const addMember = useMutation({
+    mutationFn: async ({ teamId, userId }: { teamId: number; userId: string }) =>
+      apiRequest("POST", `/api/coach/teams/${teamId}/members`, { userId }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/coach/teams"] }),
+  });
+
+  const removeMember = useMutation({
+    mutationFn: async ({ teamId, userId }: { teamId: number; userId: string }) =>
+      apiRequest("DELETE", `/api/coach/teams/${teamId}/members/${userId}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/coach/teams"] }),
+  });
+
+  const assignedIds = new Set(teams.flatMap(t => t.members.map(m => m.id)));
+  const unassigned = athletes.filter(a => !assignedIds.has(a.id));
+
+  const athleteName = (a: UserType) => [a.firstName, a.lastName].filter(Boolean).join(" ") || a.email || a.id;
+
+  if (isLoading) return <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" /></div>;
+
+  return (
+    <div className="space-y-6">
+      {/* Create team */}
+      <div className="bg-card/20 border border-border/50 rounded-xl p-4">
+        <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+          <Plus className="w-4 h-4 text-primary" /> Új csapat létrehozása
+        </h3>
+        <div className="flex gap-2">
+          <Input
+            value={newTeamName}
+            onChange={e => setNewTeamName(e.target.value)}
+            placeholder="Csapat neve (pl. Offense, Defense...)"
+            className="flex-1 bg-black/30 border-primary/20 h-9 text-sm"
+            onKeyDown={e => { if (e.key === "Enter" && newTeamName.trim()) createTeam.mutate(newTeamName); }}
+            data-testid="input-team-name"
+          />
+          <Button
+            onClick={() => createTeam.mutate(newTeamName)}
+            disabled={!newTeamName.trim() || createTeam.isPending}
+            className="bg-primary text-black font-bold shrink-0"
+            data-testid="button-create-team"
+          >
+            Létrehozás
+          </Button>
+        </div>
+      </div>
+
+      {/* Teams list */}
+      {teams.length === 0 ? (
+        <div className="text-center py-16 bg-card/10 rounded-2xl border border-dashed border-border">
+          <Shield className="w-12 h-12 text-primary/20 mx-auto mb-3" />
+          <p className="text-muted-foreground text-sm">Még nincs csapat. Hozz létre egyet!</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {teams.map(team => {
+            const available = athletes.filter(a => !team.members.some(m => m.id === a.id));
+            return (
+              <div key={team.id} className="bg-card/20 border border-border/50 rounded-xl overflow-hidden" data-testid={`team-card-${team.id}`}>
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border/30 bg-black/20">
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-primary" />
+                    <span className="font-bold text-foreground">{team.name}</span>
+                    <span className="text-xs text-muted-foreground">({team.members.length} tag)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => onOpenChat(team.id)}
+                      className="flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 border border-cyan-500/30 rounded px-2 py-1 transition-colors"
+                      data-testid={`button-open-chat-${team.id}`}
+                    >
+                      <MessageSquare className="w-3 h-3" /> Üzenőfal
+                    </button>
+                    <button
+                      onClick={() => { if (confirm(`Törlöd a "${team.name}" csapatot?`)) deleteTeam.mutate(team.id); }}
+                      className="text-red-400/60 hover:text-red-400 transition-colors p-1"
+                      data-testid={`button-delete-team-${team.id}`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-4 space-y-3">
+                  {/* Members */}
+                  {team.members.length === 0 ? (
+                    <p className="text-xs text-muted-foreground italic">Még nincs tag ebben a csapatban.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {team.members.map(member => (
+                        <div key={member.id} className="flex items-center gap-1.5 bg-black/30 border border-border/40 rounded-full pl-2 pr-1 py-0.5">
+                          <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[9px] font-bold text-primary shrink-0">
+                            {athleteName(member)[0]?.toUpperCase()}
+                          </div>
+                          <span className="text-xs text-foreground/80">{athleteName(member)}</span>
+                          <button
+                            onClick={() => removeMember.mutate({ teamId: team.id, userId: member.id })}
+                            className="text-muted-foreground hover:text-red-400 transition-colors ml-0.5"
+                            data-testid={`button-remove-member-${member.id}`}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Add member */}
+                  {available.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <UserPlus className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      <select
+                        className="flex-1 bg-black/30 border border-border/40 rounded text-xs text-foreground px-2 py-1.5 focus:outline-none focus:border-primary/50"
+                        defaultValue=""
+                        onChange={e => {
+                          if (e.target.value) {
+                            addMember.mutate({ teamId: team.id, userId: e.target.value });
+                            e.target.value = "";
+                          }
+                        }}
+                        data-testid={`select-add-member-${team.id}`}
+                      >
+                        <option value="">+ Játékos hozzáadása...</option>
+                        {available.map(a => (
+                          <option key={a.id} value={a.id}>{athleteName(a)}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Unassigned athletes */}
+      {unassigned.length > 0 && (
+        <div className="bg-card/10 border border-dashed border-border/40 rounded-xl p-4">
+          <p className="text-xs text-muted-foreground mb-2 font-mono uppercase tracking-widest">Csapat nélküli játékosok</p>
+          <div className="flex flex-wrap gap-2">
+            {unassigned.map(a => (
+              <div key={a.id} className="flex items-center gap-1.5 bg-black/20 border border-border/30 rounded-full px-2.5 py-1 text-xs text-muted-foreground">
+                <User className="w-3 h-3" />
+                {athleteName(a)}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CoachDashboard({ onSwitchRole }: { onSwitchRole: () => void }) {
-  const [coachTab, setCoachTab] = useState<'athletes' | 'playbook'>('athletes');
-  const { data: athletes, isLoading, refetch } = useQuery<UserType[]>({
+  const [coachTab, setCoachTab] = useState<'athletes' | 'teams' | 'playbook'>('athletes');
+  const [teamChatId, setTeamChatId] = useState<number | null>(null);
+  const { data: athletes = [], isLoading, refetch } = useQuery<UserType[]>({
     queryKey: ["/api/coach/athletes"],
     refetchInterval: 15000,
   });
+
+  if (teamChatId !== null) {
+    return (
+      <div className="dark bg-background min-h-screen text-foreground">
+        <TeamChat teamIdOverride={teamChatId} onBack={() => setTeamChatId(null)} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -516,7 +706,7 @@ export default function CoachDashboard({ onSwitchRole }: { onSwitchRole: () => v
         </div>
 
         {/* Top-level tabs */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-2 mb-6 flex-wrap">
           <button
             onClick={() => setCoachTab('athletes')}
             data-testid="button-tab-athletes"
@@ -524,6 +714,14 @@ export default function CoachDashboard({ onSwitchRole }: { onSwitchRole: () => v
               coachTab === 'athletes' ? "bg-primary text-black" : "text-muted-foreground hover:text-foreground hover:bg-white/5 border border-border")}
           >
             <Users className="w-4 h-4" /> Játékosok
+          </button>
+          <button
+            onClick={() => setCoachTab('teams')}
+            data-testid="button-tab-teams"
+            className={cn("flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all",
+              coachTab === 'teams' ? "bg-primary text-black" : "text-muted-foreground hover:text-foreground hover:bg-white/5 border border-border")}
+          >
+            <Shield className="w-4 h-4" /> Csapatok
           </button>
           <button
             onClick={() => setCoachTab('playbook')}
@@ -537,6 +735,8 @@ export default function CoachDashboard({ onSwitchRole }: { onSwitchRole: () => v
 
         {coachTab === 'playbook' ? (
           <PlaybookEditor />
+        ) : coachTab === 'teams' ? (
+          <TeamsTab athletes={athletes} onOpenChat={setTeamChatId} />
         ) : (
           <>
             {isLoading ? (

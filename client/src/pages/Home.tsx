@@ -20,6 +20,8 @@ import {
   Dumbbell,
   ChevronRight,
   RefreshCw,
+  MessageSquare,
+  Users,
 } from "lucide-react";
 import {
   Select,
@@ -148,6 +150,12 @@ const dashboardCards = [
   },
 ];
 
+interface MyTeam {
+  id: number;
+  name: string;
+  members: { id: string }[];
+}
+
 function AthleteDashboard({
   positionId,
   onChangePosition,
@@ -156,6 +164,10 @@ function AthleteDashboard({
   onChangePosition: () => void;
 }) {
   const { data: position } = usePosition(positionId);
+  const { data: myTeam } = useQuery<MyTeam | null>({
+    queryKey: ["/api/my-team"],
+    retry: false,
+  });
   const Icon = positionIcons[positionId] || Trophy;
 
   return (
@@ -235,6 +247,33 @@ function AthleteDashboard({
             );
           })}
         </div>
+
+        {/* Team card – only shown when the athlete is in a team */}
+        {myTeam && (
+          <Link href={`/team/${myTeam.id}`}>
+            <div
+              className="relative group rounded-xl border bg-gradient-to-br from-green-500/20 to-green-500/5 border-green-500/30 hover:border-green-500/60 p-5 transition-all duration-200 cursor-pointer hover:scale-[1.02] hover:shadow-lg hover:shadow-black/30"
+              data-testid="card-team"
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div className="p-2 rounded-lg bg-black/30 text-green-400">
+                  <MessageSquare className="w-5 h-5" />
+                </div>
+                <span className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground border border-border/50 rounded px-1.5 py-0.5">
+                  Csapat
+                </span>
+              </div>
+              <h3 className="font-display font-bold text-foreground text-base tracking-wide mb-0.5">
+                {myTeam.name}
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed flex items-center gap-1.5">
+                <Users className="w-3 h-3" />
+                {myTeam.members.length} csapattag · Üzenőfal
+              </p>
+              <ChevronRight className="absolute bottom-4 right-4 w-4 h-4 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
+            </div>
+          </Link>
+        )}
       </div>
     </div>
   );

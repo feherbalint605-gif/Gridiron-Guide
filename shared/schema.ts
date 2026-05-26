@@ -102,3 +102,26 @@ export const playbookPlays = pgTable("playbook_plays", {
 });
 
 export type PlaybookPlay = typeof playbookPlays.$inferSelect;
+
+export const teams = pgTable("teams", {
+  id: serial("id").primaryKey(),
+  coachId: text("coach_id").notNull(),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const teamMembers = pgTable("team_members", {
+  teamId: integer("team_id").notNull(),
+  userId: text("user_id").notNull(),
+}, (t) => [unique().on(t.teamId, t.userId)]);
+
+export const teamMessages = pgTable("team_messages", {
+  id: serial("id").primaryKey(),
+  teamId: integer("team_id").notNull(),
+  authorId: text("author_id").notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type Team = typeof teams.$inferSelect;
+export type TeamMessage = typeof teamMessages.$inferSelect;

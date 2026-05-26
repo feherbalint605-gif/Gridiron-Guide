@@ -8,6 +8,7 @@ import Home from "@/pages/Home";
 import PositionDetail from "@/pages/PositionDetail";
 import CoachDashboard from "@/pages/CoachDashboard";
 import PlaybookViewer from "@/pages/PlaybookViewer";
+import TeamChat from "@/pages/TeamChat";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useAuth } from "@/hooks/use-auth";
@@ -21,6 +22,7 @@ function AthleteRouter() {
       <Route path="/" component={Home} />
       <Route path="/position/:id" component={PositionDetail} />
       <Route path="/playbook" component={PlaybookViewer} />
+      <Route path="/team/:id" component={TeamChat} />
       <Route path="/film">
         <div className="p-8 text-center text-muted-foreground">Film content coming soon...</div>
       </Route>
