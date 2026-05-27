@@ -96,6 +96,20 @@ export default function PlaybookEditor() {
   });
 
   const [folderMenuOpen, setFolderMenuOpen] = useState<string | null>(null);
+  const [folderMenuPos, setFolderMenuPos] = useState<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    if (!folderMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('[data-folder-menu]')) {
+        setFolderMenuOpen(null);
+        setFolderMenuPos(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [folderMenuOpen]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -493,6 +507,44 @@ export default function PlaybookEditor() {
 
   return (
     <div className="flex gap-4 h-full" data-testid="playbook-editor">
+      {/* Folder access dropdown – rendered at root level so it escapes overflow containers */}
+      {folderMenuOpen && folderMenuPos && (() => {
+        const assignedTeamId = folderAccessMap[folderMenuOpen];
+        const isLocked = assignedTeamId !== undefined;
+        return (
+          <div
+            data-folder-menu
+            style={{ position: 'fixed', left: folderMenuPos.x, top: folderMenuPos.y, transform: 'translateX(-100%)' }}
+            className="z-[9999] bg-[#0a0a14] border border-cyan-500/20 rounded-lg shadow-2xl min-w-[180px] py-1"
+            data-testid={`folder-access-menu-${folderMenuOpen}`}
+          >
+            <div className="px-3 py-1.5 text-[10px] text-cyan-400/50 uppercase tracking-widest font-mono border-b border-cyan-500/10 mb-1">
+              Hozzáférés — {folderMenuOpen}
+            </div>
+            <button
+              onClick={() => { setFolderAccessMutation.mutate({ folder: folderMenuOpen, teamId: null }); setFolderMenuOpen(null); setFolderMenuPos(null); }}
+              className={cn("flex items-center gap-2 w-full px-3 py-2 text-xs transition-colors hover:bg-white/5",
+                !isLocked ? "text-cyan-400 font-bold" : "text-foreground/70")}
+            >
+              <Unlock className="w-3.5 h-3.5" /> Mindenki láthatja
+            </button>
+            {coachTeams.map(team => (
+              <button
+                key={team.id}
+                onClick={() => { setFolderAccessMutation.mutate({ folder: folderMenuOpen, teamId: team.id }); setFolderMenuOpen(null); setFolderMenuPos(null); }}
+                className={cn("flex items-center gap-2 w-full px-3 py-2 text-xs transition-colors hover:bg-white/5",
+                  assignedTeamId === team.id ? "text-amber-400 font-bold" : "text-foreground/70")}
+                data-testid={`folder-access-team-${team.id}`}
+              >
+                <Lock className="w-3.5 h-3.5" /> {team.name}
+              </button>
+            ))}
+            {coachTeams.length === 0 && (
+              <p className="px-3 py-2 text-[10px] text-muted-foreground italic">Még nincs csapat létrehozva</p>
+            )}
+          </div>
+        );
+      })()}
       <div className="w-48 shrink-0 flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <span className="text-xs font-mono uppercase text-cyan-400 tracking-widest">Playbook</span>
@@ -559,9 +611,19 @@ export default function PlaybookEditor() {
                       <span className="text-[10px] text-cyan-400/30">{folderPlays.length}</span>
                     </button>
                     {/* Lock/team button */}
-                    <div className="relative shrink-0">
+                    <div className="shrink-0" data-folder-menu>
                       <button
-                        onClick={(e) => { e.stopPropagation(); setFolderMenuOpen(prev => prev === folder ? null : folder); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (folderMenuOpen === folder) {
+                            setFolderMenuOpen(null);
+                            setFolderMenuPos(null);
+                          } else {
+                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                            setFolderMenuPos({ x: rect.right, y: rect.bottom + 4 });
+                            setFolderMenuOpen(folder);
+                          }
+                        }}
                         title={isLocked ? `Zárva: ${assignedTeam?.name ?? '?'}` : 'Mindenki láthatja'}
                         className={cn("p-0.5 rounded transition-colors",
                           isLocked ? "text-amber-400 hover:text-amber-300" : "text-cyan-400/20 hover:text-cyan-400/60")}
@@ -569,35 +631,6 @@ export default function PlaybookEditor() {
                       >
                         {isLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
                       </button>
-                      {folderMenuOpen === folder && (
-                        <div className="absolute right-0 top-5 z-50 bg-[#0a0a14] border border-cyan-500/20 rounded-lg shadow-xl min-w-[160px] py-1"
-                          data-testid={`folder-access-menu-${folder}`}>
-                          <div className="px-3 py-1.5 text-[10px] text-cyan-400/50 uppercase tracking-widest font-mono border-b border-cyan-500/10 mb-1">
-                            Hozzáférés
-                          </div>
-                          <button
-                            onClick={() => { setFolderAccessMutation.mutate({ folder, teamId: null }); setFolderMenuOpen(null); }}
-                            className={cn("flex items-center gap-2 w-full px-3 py-1.5 text-xs transition-colors hover:bg-white/5",
-                              !isLocked ? "text-cyan-400 font-bold" : "text-foreground/70")}
-                          >
-                            <Unlock className="w-3 h-3" /> Mindenki
-                          </button>
-                          {coachTeams.map(team => (
-                            <button
-                              key={team.id}
-                              onClick={() => { setFolderAccessMutation.mutate({ folder, teamId: team.id }); setFolderMenuOpen(null); }}
-                              className={cn("flex items-center gap-2 w-full px-3 py-1.5 text-xs transition-colors hover:bg-white/5",
-                                assignedTeamId === team.id ? "text-amber-400 font-bold" : "text-foreground/70")}
-                              data-testid={`folder-access-team-${team.id}`}
-                            >
-                              <Lock className="w-3 h-3" /> {team.name}
-                            </button>
-                          ))}
-                          {coachTeams.length === 0 && (
-                            <p className="px-3 py-1.5 text-[10px] text-muted-foreground italic">Még nincs csapat</p>
-                          )}
-                        </div>
-                      )}
                     </div>
                   </div>
                   {/* Locked badge */}
