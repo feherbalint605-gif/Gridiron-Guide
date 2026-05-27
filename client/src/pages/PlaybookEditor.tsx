@@ -7,9 +7,9 @@ import { cn } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
-  W, H, YARD, PLAYER_CFG, OL_TYPES, ROUTE_TREE, LOS_OPTIONS,
-  PlayerType, PlayPlayer, PlayRoute, PlayData, SavedPlay, RouteLineStyle, RouteEndStyle,
-  clamp, makeDefaultPlay, applyRouteTree, makeArrowPolygon, makeArrowPath, makeTeePoints, getEndSegment, interpolatePolyline, genId, snapLosToOption, yardFromY, yToYard
+  W, H, YARD, PLAYER_CFG, OL_TYPES, DL_TYPES, OFF_SKILL_TYPES, DEF_ADD_TYPES, ROUTE_TREE, LOS_OPTIONS,
+  PlayerType, PlayMode, PlayPlayer, PlayRoute, PlayData, SavedPlay, RouteLineStyle, RouteEndStyle,
+  clamp, makeDefaultPlay, makeDefaultDefensePlay, applyRouteTree, makeArrowPolygon, makeArrowPath, makeTeePoints, getEndSegment, interpolatePolyline, genId, snapLosToOption, yardFromY, yToYard
 } from "@/lib/playbook-types";
 
 export default function PlaybookEditor() {
@@ -40,6 +40,7 @@ export default function PlaybookEditor() {
   const [editingPlayerNote, setEditingPlayerNote] = useState<string | null>(null);
   const [playerNoteText, setPlayerNoteText] = useState('');
   const [hoveredPlayer, setHoveredPlayer] = useState<string | null>(null);
+  const [playMode, setPlayMode] = useState<PlayMode>('offense');
 
   const [isAnimating, setIsAnimating] = useState(false);
   const [animProgress, setAnimProgress] = useState(0);
@@ -114,7 +115,7 @@ export default function PlaybookEditor() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!playName.trim()) throw new Error('Add nevet a play-nek!');
-      const playData: PlayData = { ...play, note: playNote.trim() || undefined };
+      const playData: PlayData = { ...play, note: playNote.trim() || undefined, mode: playMode };
       const body = { name: playName.trim(), folder: playFolder, data: playData };
       try {
         const res = editingId
@@ -190,6 +191,7 @@ export default function PlaybookEditor() {
     const data = JSON.parse(JSON.stringify(p.data)) as PlayData;
     data.losY = snapLosToOption(data.losY);
     setPlay(data);
+    setPlayMode(data.mode ?? 'offense');
     setPlayName(p.name);
     setPlayNote(data.note || '');
     setPlayFolder(p.folder || 'Általános');
@@ -202,7 +204,7 @@ export default function PlaybookEditor() {
   };
 
   const newPlay = () => {
-    setPlay(makeDefaultPlay());
+    setPlay(playMode === 'defense' ? makeDefaultDefensePlay() : makeDefaultPlay());
     setPlayName('');
     setPlayNote('');
     setPlayFolder(openFolder || 'Általános');
@@ -215,9 +217,10 @@ export default function PlaybookEditor() {
 
   const addPlayer = (type: PlayerType) => {
     const id = genId();
+    const isDefense = playMode === 'defense';
     setPlay(p => ({
       ...p,
-      players: [...p.players, { id, type, x: W / 2, y: p.losY + 5 * YARD }],
+      players: [...p.players, { id, type, x: W / 2, y: isDefense ? p.losY - 3 * YARD : p.losY + 5 * YARD }],
     }));
     setSelectedId(id);
     setShowRouteMenu(null);
@@ -437,7 +440,7 @@ export default function PlaybookEditor() {
     }
   };
 
-  const isReceiver = (type: PlayerType) => !OL_TYPES.includes(type);
+  const isReceiver = (type: PlayerType) => !OL_TYPES.includes(type) && !DL_TYPES.includes(type);
 
   const dragStartRef = useRef<{ x: number; y: number; id: string; moved: boolean } | null>(null);
 
@@ -674,6 +677,42 @@ export default function PlaybookEditor() {
 
       <div className="flex-1 flex flex-col gap-3 min-w-0">
         <div className="flex flex-wrap items-center gap-2 bg-black/40 border border-cyan-500/20 rounded-lg px-3 py-2">
+          {/* Offense / Defense toggle */}
+          <div className="flex rounded overflow-hidden border border-cyan-500/20">
+            <button
+              onClick={() => {
+                if (playMode !== 'offense') {
+                  setPlayMode('offense');
+                  setPlay(makeDefaultPlay());
+                  setPlayName(''); setPlayNote(''); setEditingId(null);
+                  setSelectedId(null); setRoutePts(null);
+                }
+              }}
+              data-testid="button-mode-offense"
+              className={cn("px-2.5 py-1 text-xs font-bold transition-all",
+                playMode === 'offense' ? "bg-cyan-500 text-black" : "text-cyan-400/50 hover:text-cyan-300 hover:bg-white/5")}
+            >
+              OFF
+            </button>
+            <button
+              onClick={() => {
+                if (playMode !== 'defense') {
+                  setPlayMode('defense');
+                  setPlay(makeDefaultDefensePlay());
+                  setPlayName(''); setPlayNote(''); setEditingId(null);
+                  setSelectedId(null); setRoutePts(null);
+                }
+              }}
+              data-testid="button-mode-defense"
+              className={cn("px-2.5 py-1 text-xs font-bold transition-all",
+                playMode === 'defense' ? "bg-red-500 text-white" : "text-red-400/50 hover:text-red-300 hover:bg-white/5")}
+            >
+              DEF
+            </button>
+          </div>
+
+          <div className="w-px h-4 bg-cyan-500/20" />
+
           <div className="flex gap-1">
             <button
               onClick={() => { setTool('select'); setRoutePts(null); setShowRouteMenu(null); }}
@@ -697,7 +736,7 @@ export default function PlaybookEditor() {
 
           <div className="flex items-center gap-1 flex-wrap">
             <span className="text-[10px] text-cyan-400/50 uppercase tracking-widest">+Játékos:</span>
-            {(['WR', 'RB', 'TE', 'FB'] as PlayerType[]).map(t => (
+            {(playMode === 'offense' ? OFF_SKILL_TYPES : DEF_ADD_TYPES).map(t => (
               <button
                 key={t}
                 onClick={() => addPlayer(t)}
@@ -884,7 +923,7 @@ export default function PlaybookEditor() {
                   data-testid={`player-${player.id}`}
                 >
                   {sel && <circle r={17} fill="none" stroke="#22d3ee" strokeWidth={2} opacity={0.8} />}
-                  {isOL ? (
+                  {(isOL || DL_TYPES.includes(player.type)) ? (
                     <rect x={-11} y={-11} width={22} height={22} fill={cfg.color} rx={3}
                       stroke={sel ? '#22d3ee' : cfg.stroke} strokeWidth={1.5} />
                   ) : (

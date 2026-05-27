@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, BookOpen, FolderOpen, ArrowLeft, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  W, H, YARD, PLAYER_CFG, OL_TYPES,
+  W, H, YARD, PLAYER_CFG, OL_TYPES, DL_TYPES,
   PlayPlayer, PlayRoute, PlayData, SavedPlay, RouteLineStyle, makeArrowPath, makeTeePoints, getEndSegment, interpolatePolyline, yardFromY, yToYard
 } from "@/lib/playbook-types";
 
@@ -50,16 +50,16 @@ function MiniFieldSVG({ play }: { play: PlayData }) {
       })}
       {play.players.map(player => {
         const cfg = PLAYER_CFG[player.type];
-        const isOL = OL_TYPES.includes(player.type);
+        const isBox = OL_TYPES.includes(player.type) || DL_TYPES.includes(player.type);
         return (
           <g key={player.id} transform={`translate(${player.x},${player.y})`}>
-            {isOL ? (
+            {isBox ? (
               <rect x={-11} y={-11} width={22} height={22} fill={cfg.color} rx={3} stroke={cfg.stroke} strokeWidth={1.5} />
             ) : (
               <circle r={12} fill={cfg.color} stroke={cfg.stroke} strokeWidth={1.5} />
             )}
             <text textAnchor="middle" dominantBaseline="middle" fill="white"
-              fontSize={isOL ? 7 : 9} fontWeight="bold" fontFamily="monospace"
+              fontSize={isBox ? 7 : 9} fontWeight="bold" fontFamily="monospace"
               style={{ pointerEvents: 'none' }}>
               {cfg.label}
             </text>
@@ -238,18 +238,18 @@ function FieldSVG({ play }: { play: PlayData }) {
             onClick={(e) => { e.stopPropagation(); if (animProgress === 0) onPlayerClick(player.id); }}
             style={{ cursor: hasNote && animProgress === 0 ? 'pointer' : 'default' }}>
             {activeNote === player.id && <circle r={17} fill="none" stroke={cfg.color} strokeWidth={2} opacity={0.7} />}
-            {isOL ? (
+            {(OL_TYPES.includes(player.type) || DL_TYPES.includes(player.type)) ? (
               <rect x={-11} y={-11} width={22} height={22} fill={cfg.color} rx={3} stroke={cfg.stroke} strokeWidth={1.5} />
             ) : (
               <circle r={12} fill={cfg.color} stroke={cfg.stroke} strokeWidth={1.5} />
             )}
             <text textAnchor="middle" dominantBaseline="middle" fill="white"
-              fontSize={isOL ? 7 : 9} fontWeight="bold" fontFamily="monospace"
+              fontSize={(OL_TYPES.includes(player.type) || DL_TYPES.includes(player.type)) ? 7 : 9} fontWeight="bold" fontFamily="monospace"
               style={{ pointerEvents: 'none' }}>
               {cfg.label}
             </text>
             {hasNote && (
-              <g transform={`translate(${isOL ? 11 : 10}, ${isOL ? -11 : -10})`}>
+              <g transform={`translate(${(OL_TYPES.includes(player.type) || DL_TYPES.includes(player.type)) ? 11 : 10}, ${(OL_TYPES.includes(player.type) || DL_TYPES.includes(player.type)) ? -11 : -10})`}>
                 <circle r={5} fill={cfg.color} stroke="#000" strokeWidth={0.5} />
                 <text textAnchor="middle" dominantBaseline="middle" fill="white"
                   fontSize={8} fontWeight="bold" fontFamily="sans-serif"

@@ -2,20 +2,34 @@ export const W = 800;
 export const H = 500;
 export const YARD = 10;
 
-export const PLAYER_CFG: Record<string, { color: string; stroke: string; label: string }> = {
-  LT: { color: '#0ea5e9', stroke: '#0284c7', label: 'LT' },
-  LG: { color: '#0ea5e9', stroke: '#0284c7', label: 'LG' },
-  C:  { color: '#0ea5e9', stroke: '#0284c7', label: 'C' },
-  RG: { color: '#0ea5e9', stroke: '#0284c7', label: 'RG' },
-  RT: { color: '#0ea5e9', stroke: '#0284c7', label: 'RT' },
-  QB: { color: '#22d3ee', stroke: '#06b6d4', label: 'QB' },
-  WR: { color: '#f59e0b', stroke: '#d97706', label: 'WR' },
-  RB: { color: '#ef4444', stroke: '#dc2626', label: 'RB' },
-  TE: { color: '#a855f7', stroke: '#9333ea', label: 'TE' },
-  FB: { color: '#ec4899', stroke: '#db2777', label: 'FB' },
+export const PLAYER_CFG: Record<string, { color: string; stroke: string; label: string; shape?: 'square' }> = {
+  // Offense
+  LT:  { color: '#0ea5e9', stroke: '#0284c7', label: 'LT',  shape: 'square' },
+  LG:  { color: '#0ea5e9', stroke: '#0284c7', label: 'LG',  shape: 'square' },
+  C:   { color: '#0ea5e9', stroke: '#0284c7', label: 'C',   shape: 'square' },
+  RG:  { color: '#0ea5e9', stroke: '#0284c7', label: 'RG',  shape: 'square' },
+  RT:  { color: '#0ea5e9', stroke: '#0284c7', label: 'RT',  shape: 'square' },
+  QB:  { color: '#22d3ee', stroke: '#06b6d4', label: 'QB' },
+  WR:  { color: '#f59e0b', stroke: '#d97706', label: 'WR' },
+  RB:  { color: '#ef4444', stroke: '#dc2626', label: 'RB' },
+  TE:  { color: '#a855f7', stroke: '#9333ea', label: 'TE' },
+  FB:  { color: '#ec4899', stroke: '#db2777', label: 'FB' },
+  // Defense
+  DE:  { color: '#f87171', stroke: '#dc2626', label: 'DE',  shape: 'square' },
+  DT:  { color: '#fca5a5', stroke: '#ef4444', label: 'DT',  shape: 'square' },
+  NT:  { color: '#fca5a5', stroke: '#ef4444', label: 'NT',  shape: 'square' },
+  MLB: { color: '#fb923c', stroke: '#ea580c', label: 'MLB' },
+  OLB: { color: '#fdba74', stroke: '#f97316', label: 'OLB' },
+  CB:  { color: '#4ade80', stroke: '#16a34a', label: 'CB' },
+  SS:  { color: '#86efac', stroke: '#22c55e', label: 'SS' },
+  FS:  { color: '#bbf7d0', stroke: '#4ade80', label: 'FS' },
 };
 
 export const OL_TYPES = ['LT', 'LG', 'C', 'RG', 'RT'];
+export const DL_TYPES = ['DE', 'DT', 'NT'];
+
+export const OFF_SKILL_TYPES: PlayerType[] = ['WR', 'RB', 'TE', 'FB'];
+export const DEF_ADD_TYPES: PlayerType[]   = ['DE', 'DT', 'MLB', 'OLB', 'CB', 'SS', 'FS'];
 
 export const ROUTE_TREE: { num: number; name: string; offsets: [number, number][] }[] = [
   { num: 1, name: 'Flat',        offsets: [[0, -3 * YARD], [6 * YARD, 0]] },
@@ -29,7 +43,9 @@ export const ROUTE_TREE: { num: number; name: string; offsets: [number, number][
   { num: 9, name: 'Go/Fade',     offsets: [[1 * YARD, -30 * YARD]] },
 ];
 
-export type PlayerType = 'LT' | 'LG' | 'C' | 'RG' | 'RT' | 'QB' | 'WR' | 'RB' | 'TE' | 'FB';
+export type OffensePlayerType = 'LT' | 'LG' | 'C' | 'RG' | 'RT' | 'QB' | 'WR' | 'RB' | 'TE' | 'FB';
+export type DefensePlayerType = 'DE' | 'DT' | 'NT' | 'MLB' | 'OLB' | 'CB' | 'SS' | 'FS';
+export type PlayerType = OffensePlayerType | DefensePlayerType;
 
 export interface PlayPlayer {
   id: string;
@@ -50,12 +66,15 @@ export interface PlayRoute {
   speed?: number;
 }
 
+export type PlayMode = 'offense' | 'defense';
+
 export interface PlayData {
   losY: number;
   players: PlayPlayer[];
   routes: PlayRoute[];
   note?: string;
   playerNotes?: Record<string, string>;
+  mode?: PlayMode;
 }
 
 export interface SavedPlay {
@@ -97,6 +116,7 @@ export function makeDefaultPlay(): PlayData {
   const losY = yToYard(25);
   return {
     losY,
+    mode: 'offense',
     players: [
       { id: 'lt',  type: 'LT', x: 320, y: losY },
       { id: 'lg',  type: 'LG', x: 360, y: losY },
@@ -107,6 +127,28 @@ export function makeDefaultPlay(): PlayData {
       { id: 'wr1', type: 'WR', x: 80,  y: losY },
       { id: 'wr2', type: 'WR', x: 720, y: losY },
       { id: 'rb',  type: 'RB', x: 400, y: losY + 6 * YARD },
+    ],
+    routes: [],
+  };
+}
+
+export function makeDefaultDefensePlay(): PlayData {
+  const losY = yToYard(25);
+  return {
+    losY,
+    mode: 'defense',
+    players: [
+      { id: 'de1',  type: 'DE',  x: 200, y: losY - YARD },
+      { id: 'dt1',  type: 'DT',  x: 330, y: losY - YARD },
+      { id: 'dt2',  type: 'DT',  x: 470, y: losY - YARD },
+      { id: 'de2',  type: 'DE',  x: 600, y: losY - YARD },
+      { id: 'olb1', type: 'OLB', x: 150, y: losY - 3 * YARD },
+      { id: 'mlb',  type: 'MLB', x: 400, y: losY - 3 * YARD },
+      { id: 'olb2', type: 'OLB', x: 650, y: losY - 3 * YARD },
+      { id: 'cb1',  type: 'CB',  x: 60,  y: losY - 5 * YARD },
+      { id: 'ss',   type: 'SS',  x: 560, y: losY - 6 * YARD },
+      { id: 'fs',   type: 'FS',  x: 400, y: losY - 10 * YARD },
+      { id: 'cb2',  type: 'CB',  x: 740, y: losY - 5 * YARD },
     ],
     routes: [],
   };
