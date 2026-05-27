@@ -494,6 +494,7 @@ interface TeamWithMembers {
 function TeamsTab({ athletes, onOpenChat }: { athletes: UserType[]; onOpenChat: (id: number) => void }) {
   const { toast } = useToast();
   const [newTeamName, setNewTeamName] = useState("");
+  const [addingToTeam, setAddingToTeam] = useState<number | null>(null);
 
   const { data: teams = [], isLoading } = useQuery<TeamWithMembers[]>({
     queryKey: ["/api/coach/teams"],
@@ -616,28 +617,64 @@ function TeamsTab({ athletes, onOpenChat }: { athletes: UserType[]; onOpenChat: 
                     </div>
                   )}
 
-                  {/* Add member */}
-                  {available.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <UserPlus className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                      <select
-                        className="flex-1 bg-black/30 border border-border/40 rounded text-xs text-foreground px-2 py-1.5 focus:outline-none focus:border-primary/50"
-                        defaultValue=""
-                        onChange={e => {
-                          if (e.target.value) {
-                            addMember.mutate({ teamId: team.id, userId: e.target.value });
-                            e.target.value = "";
-                          }
-                        }}
-                        data-testid={`select-add-member-${team.id}`}
-                      >
-                        <option value="">+ Játékos hozzáadása...</option>
-                        {available.map(a => (
-                          <option key={a.id} value={a.id}>{athleteName(a)}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
+                  {/* Add member button */}
+                  <div>
+                    <button
+                      onClick={() => setAddingToTeam(addingToTeam === team.id ? null : team.id)}
+                      className={cn(
+                        "flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border transition-all",
+                        addingToTeam === team.id
+                          ? "bg-primary/10 border-primary/40 text-primary"
+                          : "border-dashed border-border/50 text-muted-foreground hover:text-foreground hover:border-border"
+                      )}
+                      data-testid={`button-toggle-add-${team.id}`}
+                    >
+                      <UserPlus className="w-3.5 h-3.5" />
+                      {addingToTeam === team.id ? "Bezárás" : "Játékos hozzáadása"}
+                    </button>
+
+                    {addingToTeam === team.id && (
+                      <div className="mt-3 bg-black/20 border border-border/30 rounded-lg overflow-hidden">
+                        {athletes.length === 0 ? (
+                          <p className="text-xs text-muted-foreground p-3 text-center">Nincs elérhető játékos.</p>
+                        ) : (
+                          <div className="divide-y divide-border/20 max-h-52 overflow-y-auto">
+                            {athletes.map(a => {
+                              const alreadyIn = team.members.some(m => m.id === a.id);
+                              return (
+                                <div key={a.id} className="flex items-center justify-between px-3 py-2 hover:bg-white/5 transition-colors">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-6 h-6 rounded-full bg-primary/20 border border-primary/20 flex items-center justify-center text-[9px] font-bold text-primary">
+                                      {athleteName(a)[0]?.toUpperCase()}
+                                    </div>
+                                    <span className="text-xs text-foreground/80">{athleteName(a)}</span>
+                                  </div>
+                                  {alreadyIn ? (
+                                    <button
+                                      onClick={() => removeMember.mutate({ teamId: team.id, userId: a.id })}
+                                      className="text-xs text-red-400/70 hover:text-red-400 border border-red-400/20 hover:border-red-400/40 rounded px-2 py-0.5 transition-all"
+                                      data-testid={`button-remove-from-panel-${a.id}`}
+                                    >
+                                      Eltávolítás
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => addMember.mutate({ teamId: team.id, userId: a.id })}
+                                      disabled={addMember.isPending}
+                                      className="text-xs text-primary hover:text-primary/80 border border-primary/30 hover:border-primary/60 rounded px-2 py-0.5 transition-all disabled:opacity-40"
+                                      data-testid={`button-add-to-panel-${a.id}`}
+                                    >
+                                      Hozzáadás
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             );
