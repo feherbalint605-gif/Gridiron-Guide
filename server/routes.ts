@@ -265,6 +265,31 @@ export async function registerRoutes(
     res.json(play);
   });
 
+  // Coach: get folder-team assignments (must be BEFORE /api/playbook/:id)
+  app.get("/api/playbook/folder-access", async (req, res) => {
+    const coachId = await requireCoach(req, res);
+    if (!coachId) return;
+    const rows = await db.select().from(playbookFolderTeams).where(eq(playbookFolderTeams.coachId, coachId));
+    res.json(rows);
+  });
+
+  // Coach: set or remove team for a folder (must be BEFORE /api/playbook/:id)
+  app.put("/api/playbook/folder-access", async (req, res) => {
+    const coachId = await requireCoach(req, res);
+    if (!coachId) return;
+    const { folder, teamId } = req.body;
+    if (!folder || typeof folder !== "string") return res.status(400).json({ message: "folder szükséges" });
+    if (teamId === null || teamId === undefined) {
+      await db.delete(playbookFolderTeams).where(and(eq(playbookFolderTeams.coachId, coachId), eq(playbookFolderTeams.folder, folder)));
+      return res.json({ folder, teamId: null });
+    }
+    await db.insert(playbookFolderTeams).values({ coachId, folder, teamId }).onConflictDoUpdate({
+      target: [playbookFolderTeams.coachId, playbookFolderTeams.folder],
+      set: { teamId },
+    });
+    res.json({ folder, teamId });
+  });
+
   app.put("/api/playbook/:id", async (req, res) => {
     const coachId = await requireCoach(req, res);
     if (!coachId) return;
@@ -288,32 +313,6 @@ export async function registerRoutes(
       and(eq(playbookPlays.id, id), eq(playbookPlays.coachId, coachId))
     );
     res.sendStatus(204);
-  });
-
-  // Coach: get folder-team assignments
-  app.get("/api/playbook/folder-access", async (req, res) => {
-    const coachId = await requireCoach(req, res);
-    if (!coachId) return;
-    const rows = await db.select().from(playbookFolderTeams).where(eq(playbookFolderTeams.coachId, coachId));
-    res.json(rows);
-  });
-
-  // Coach: set or remove team for a folder
-  app.put("/api/playbook/folder-access", async (req, res) => {
-    const coachId = await requireCoach(req, res);
-    if (!coachId) return;
-    const { folder, teamId } = req.body;
-    if (!folder || typeof folder !== "string") return res.status(400).json({ message: "folder szükséges" });
-    if (teamId === null || teamId === undefined) {
-      // Remove restriction
-      await db.delete(playbookFolderTeams).where(and(eq(playbookFolderTeams.coachId, coachId), eq(playbookFolderTeams.folder, folder)));
-      return res.json({ folder, teamId: null });
-    }
-    await db.insert(playbookFolderTeams).values({ coachId, folder, teamId }).onConflictDoUpdate({
-      target: [playbookFolderTeams.coachId, playbookFolderTeams.folder],
-      set: { teamId },
-    });
-    res.json({ folder, teamId });
   });
 
   app.get("/api/my-playbook", async (req, res) => {
