@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, jsonb, timestamp, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, jsonb, timestamp, unique, primaryKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -125,3 +125,11 @@ export const teamMessages = pgTable("team_messages", {
 
 export type Team = typeof teams.$inferSelect;
 export type TeamMessage = typeof teamMessages.$inferSelect;
+
+export const playbookFolderTeams = pgTable("playbook_folder_teams", {
+  coachId: text("coach_id").notNull(),
+  folder: text("folder").notNull(),
+  teamId: integer("team_id").notNull(),
+}, (t) => [primaryKey({ columns: [t.coachId, t.folder] })]);
+
+export type PlaybookFolderTeam = typeof playbookFolderTeams.$inferSelect;

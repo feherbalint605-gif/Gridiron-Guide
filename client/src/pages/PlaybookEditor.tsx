@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { MousePointer, Pen, Plus, Trash2, Save, Check, X, FilePlus, AlertCircle, MessageSquare, FolderOpen, FolderPlus, ChevronRight, Play } from "lucide-react";
+import { MousePointer, Pen, Plus, Trash2, Save, Check, X, FilePlus, AlertCircle, MessageSquare, FolderOpen, FolderPlus, ChevronRight, Play, Lock, Unlock, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -81,6 +81,21 @@ export default function PlaybookEditor() {
   }, [play]);
 
   const { data: plays = [] } = useQuery<SavedPlay[]>({ queryKey: ['/api/playbook'] });
+
+  interface CoachTeam { id: number; name: string; }
+  interface FolderAccess { folder: string; teamId: number; }
+  const { data: coachTeams = [] } = useQuery<CoachTeam[]>({ queryKey: ['/api/coach/teams'] });
+  const { data: folderAccess = [] } = useQuery<FolderAccess[]>({ queryKey: ['/api/playbook/folder-access'] });
+  const folderAccessMap = Object.fromEntries(folderAccess.map(f => [f.folder, f.teamId]));
+
+  const setFolderAccessMutation = useMutation({
+    mutationFn: async ({ folder, teamId }: { folder: string; teamId: number | null }) =>
+      (await apiRequest('PUT', '/api/playbook/folder-access', { folder, teamId })).json(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/playbook/folder-access'] }),
+    onError: () => toast({ title: 'Hiba a hozzáférés mentésekor', variant: 'destructive' }),
+  });
+
+  const [folderMenuOpen, setFolderMenuOpen] = useState<string | null>(null);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -524,46 +539,102 @@ export default function PlaybookEditor() {
               if (!folders[f]) folders[f] = [];
               folders[f].push(p);
             });
-            return Object.entries(folders).sort(([a], [b]) => a.localeCompare(b)).map(([folder, folderPlays]) => (
-              <div key={folder} data-testid={`folder-${folder}`}>
-                <button
-                  onClick={() => setOpenFolder(prev => prev === folder ? null : folder)}
-                  className={cn("flex items-center gap-1 w-full px-1.5 py-1 rounded text-xs font-bold transition-colors",
-                    openFolder === folder ? "text-cyan-400 bg-cyan-500/10" : "text-cyan-400/60 hover:text-cyan-300 hover:bg-white/5")}
-                  data-testid={`button-folder-${folder}`}
-                >
-                  <ChevronRight className={cn("w-3 h-3 transition-transform", openFolder === folder && "rotate-90")} />
-                  <FolderOpen className="w-3 h-3" />
-                  <span className="flex-1 text-left truncate">{folder}</span>
-                  <span className="text-[10px] text-cyan-400/30">{folderPlays.length}</span>
-                </button>
-                {openFolder === folder && (
-                  <div className="ml-3 mt-0.5 space-y-0.5 border-l border-cyan-500/10 pl-1.5">
-                    {folderPlays.map(p => (
-                      <div
-                        key={p.id}
-                        onClick={() => loadPlay(p)}
-                        data-testid={`play-item-${p.id}`}
-                        className={cn(
-                          "group flex items-center gap-1 px-2 py-1 rounded text-xs cursor-pointer transition-colors",
-                          editingId === p.id ? "bg-cyan-500 text-black font-bold" : "hover:bg-white/5 text-foreground"
-                        )}
+            return Object.entries(folders).sort(([a], [b]) => a.localeCompare(b)).map(([folder, folderPlays]) => {
+              const assignedTeamId = folderAccessMap[folder];
+              const assignedTeam = coachTeams.find(t => t.id === assignedTeamId);
+              const isLocked = assignedTeamId !== undefined;
+              return (
+                <div key={folder} data-testid={`folder-${folder}`}>
+                  <div className={cn("flex items-center gap-1 w-full px-1.5 py-0.5 rounded transition-colors",
+                    openFolder === folder ? "bg-cyan-500/10" : "hover:bg-white/5")}>
+                    <button
+                      onClick={() => setOpenFolder(prev => prev === folder ? null : folder)}
+                      className={cn("flex items-center gap-1 flex-1 min-w-0 py-1 text-xs font-bold transition-colors",
+                        openFolder === folder ? "text-cyan-400" : "text-cyan-400/60 hover:text-cyan-300")}
+                      data-testid={`button-folder-${folder}`}
+                    >
+                      <ChevronRight className={cn("w-3 h-3 shrink-0 transition-transform", openFolder === folder && "rotate-90")} />
+                      <FolderOpen className="w-3 h-3 shrink-0" />
+                      <span className="flex-1 text-left truncate">{folder}</span>
+                      <span className="text-[10px] text-cyan-400/30">{folderPlays.length}</span>
+                    </button>
+                    {/* Lock/team button */}
+                    <div className="relative shrink-0">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setFolderMenuOpen(prev => prev === folder ? null : folder); }}
+                        title={isLocked ? `Zárva: ${assignedTeam?.name ?? '?'}` : 'Mindenki láthatja'}
+                        className={cn("p-0.5 rounded transition-colors",
+                          isLocked ? "text-amber-400 hover:text-amber-300" : "text-cyan-400/20 hover:text-cyan-400/60")}
+                        data-testid={`button-folder-lock-${folder}`}
                       >
-                        <span className="flex-1 truncate">{p.name}</span>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(p.id); }}
-                          data-testid={`button-delete-play-${p.id}`}
-                          className={cn("opacity-0 group-hover:opacity-100 transition-opacity shrink-0",
-                            editingId === p.id ? "text-black/50 hover:text-black" : "text-muted-foreground hover:text-red-400")}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
+                        {isLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+                      </button>
+                      {folderMenuOpen === folder && (
+                        <div className="absolute right-0 top-5 z-50 bg-[#0a0a14] border border-cyan-500/20 rounded-lg shadow-xl min-w-[160px] py-1"
+                          data-testid={`folder-access-menu-${folder}`}>
+                          <div className="px-3 py-1.5 text-[10px] text-cyan-400/50 uppercase tracking-widest font-mono border-b border-cyan-500/10 mb-1">
+                            Hozzáférés
+                          </div>
+                          <button
+                            onClick={() => { setFolderAccessMutation.mutate({ folder, teamId: null }); setFolderMenuOpen(null); }}
+                            className={cn("flex items-center gap-2 w-full px-3 py-1.5 text-xs transition-colors hover:bg-white/5",
+                              !isLocked ? "text-cyan-400 font-bold" : "text-foreground/70")}
+                          >
+                            <Unlock className="w-3 h-3" /> Mindenki
+                          </button>
+                          {coachTeams.map(team => (
+                            <button
+                              key={team.id}
+                              onClick={() => { setFolderAccessMutation.mutate({ folder, teamId: team.id }); setFolderMenuOpen(null); }}
+                              className={cn("flex items-center gap-2 w-full px-3 py-1.5 text-xs transition-colors hover:bg-white/5",
+                                assignedTeamId === team.id ? "text-amber-400 font-bold" : "text-foreground/70")}
+                              data-testid={`folder-access-team-${team.id}`}
+                            >
+                              <Lock className="w-3 h-3" /> {team.name}
+                            </button>
+                          ))}
+                          {coachTeams.length === 0 && (
+                            <p className="px-3 py-1.5 text-[10px] text-muted-foreground italic">Még nincs csapat</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
-            ));
+                  {/* Locked badge */}
+                  {isLocked && assignedTeam && (
+                    <div className="ml-5 mb-0.5 flex items-center gap-1 text-[9px] text-amber-400/70 font-mono">
+                      <Users className="w-2.5 h-2.5" />
+                      <span>{assignedTeam.name}</span>
+                    </div>
+                  )}
+                  {openFolder === folder && (
+                    <div className="ml-3 mt-0.5 space-y-0.5 border-l border-cyan-500/10 pl-1.5">
+                      {folderPlays.map(p => (
+                        <div
+                          key={p.id}
+                          onClick={() => loadPlay(p)}
+                          data-testid={`play-item-${p.id}`}
+                          className={cn(
+                            "group flex items-center gap-1 px-2 py-1 rounded text-xs cursor-pointer transition-colors",
+                            editingId === p.id ? "bg-cyan-500 text-black font-bold" : "hover:bg-white/5 text-foreground"
+                          )}
+                        >
+                          <span className="flex-1 truncate">{p.name}</span>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(p.id); }}
+                            data-testid={`button-delete-play-${p.id}`}
+                            className={cn("opacity-0 group-hover:opacity-100 transition-opacity shrink-0",
+                              editingId === p.id ? "text-black/50 hover:text-black" : "text-muted-foreground hover:text-red-400")}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            });
           })()}
         </div>
       </div>

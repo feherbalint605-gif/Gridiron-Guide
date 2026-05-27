@@ -5,7 +5,7 @@ import { api } from "@shared/routes";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import { db } from "./db";
 import { users } from "@shared/models/auth";
-import { workoutLogs, athletePlanOverrides, coachComments, playbookPlays, teams, teamMembers, teamMessages } from "@shared/schema";
+import { workoutLogs, athletePlanOverrides, coachComments, playbookPlays, teams, teamMembers, teamMessages, playbookFolderTeams } from "@shared/schema";
 import { eq, and, inArray } from "drizzle-orm";
 
 export async function registerRoutes(
@@ -290,6 +290,32 @@ export async function registerRoutes(
     res.sendStatus(204);
   });
 
+  // Coach: get folder-team assignments
+  app.get("/api/playbook/folder-access", async (req, res) => {
+    const coachId = await requireCoach(req, res);
+    if (!coachId) return;
+    const rows = await db.select().from(playbookFolderTeams).where(eq(playbookFolderTeams.coachId, coachId));
+    res.json(rows);
+  });
+
+  // Coach: set or remove team for a folder
+  app.put("/api/playbook/folder-access", async (req, res) => {
+    const coachId = await requireCoach(req, res);
+    if (!coachId) return;
+    const { folder, teamId } = req.body;
+    if (!folder || typeof folder !== "string") return res.status(400).json({ message: "folder szükséges" });
+    if (teamId === null || teamId === undefined) {
+      // Remove restriction
+      await db.delete(playbookFolderTeams).where(and(eq(playbookFolderTeams.coachId, coachId), eq(playbookFolderTeams.folder, folder)));
+      return res.json({ folder, teamId: null });
+    }
+    await db.insert(playbookFolderTeams).values({ coachId, folder, teamId }).onConflictDoUpdate({
+      target: [playbookFolderTeams.coachId, playbookFolderTeams.folder],
+      set: { teamId },
+    });
+    res.json({ folder, teamId });
+  });
+
   app.get("/api/my-playbook", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const user = req.user as any;
@@ -297,8 +323,23 @@ export async function registerRoutes(
     if (!athleteId) return res.sendStatus(401);
     const [dbUser] = await db.select().from(users).where(eq(users.id, athleteId));
     if (!dbUser?.coachId) return res.json([]);
+
+    // Get athlete's team memberships
+    const memberships = await db.select().from(teamMembers).where(eq(teamMembers.userId, athleteId));
+    const myTeamIds = new Set(memberships.map(m => m.teamId));
+
+    // Get all folder-team restrictions for this coach
+    const folderAccess = await db.select().from(playbookFolderTeams).where(eq(playbookFolderTeams.coachId, dbUser.coachId));
+    const restrictedFolders = new Map(folderAccess.map(r => [r.folder, r.teamId]));
+
+    // Fetch all plays, then filter out restricted folders the athlete can't access
     const rows = await db.select().from(playbookPlays).where(eq(playbookPlays.coachId, dbUser.coachId)).orderBy(playbookPlays.createdAt);
-    res.json(rows);
+    const visible = rows.filter(play => {
+      const requiredTeamId = restrictedFolders.get(play.folder);
+      if (requiredTeamId === undefined) return true; // no restriction
+      return myTeamIds.has(requiredTeamId);
+    });
+    res.json(visible);
   });
 
   app.get("/api/workout-logs/:positionId", async (req, res) => {
