@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, BookOpen, FolderOpen, ArrowLeft, Play } from
 import { cn } from "@/lib/utils";
 import {
   W, H, YARD, PLAYER_CFG, OL_TYPES, DL_TYPES,
-  PlayPlayer, PlayRoute, PlayData, SavedPlay, RouteLineStyle, makeArrowPath, makeTeePoints, getEndSegment, interpolatePolyline, yardFromY, yToYard
+  PlayPlayer, PlayRoute, PlayData, PlayZone, SavedPlay, RouteLineStyle, zoneCenter, makeArrowPath, makeTeePoints, getEndSegment, interpolatePolyline, yardFromY, yToYard
 } from "@/lib/playbook-types";
 
 function MiniFieldSVG({ play }: { play: PlayData }) {
@@ -28,6 +28,19 @@ function MiniFieldSVG({ play }: { play: PlayData }) {
         );
       })}
       <line x1={0} y1={losY} x2={W} y2={losY} stroke="#22d3ee" strokeWidth={2.5} />
+      {(play.zones || []).map(zone => {
+        const player = play.players.find(p => p.id === zone.playerId);
+        const color = player ? PLAYER_CFG[player.type].color : '#a78bfa';
+        const freehandPath = zone.shape === 'freehand' && zone.points && zone.points.length > 2
+          ? 'M ' + zone.points.map(([px, py]) => `${px} ${py}`).join(' L ') + ' Z' : null;
+        return (
+          <g key={zone.id}>
+            {zone.shape === 'ellipse' && <ellipse cx={zone.cx} cy={zone.cy} rx={zone.rx} ry={zone.ry} fill={color + '20'} stroke={color + '80'} strokeWidth={1.5} strokeDasharray="6 3" />}
+            {zone.shape === 'rect' && <rect x={zone.cx - zone.rx} y={zone.cy - zone.ry} width={zone.rx * 2} height={zone.ry * 2} fill={color + '20'} stroke={color + '80'} strokeWidth={1.5} strokeDasharray="6 3" />}
+            {freehandPath && <path d={freehandPath} fill={color + '20'} stroke={color + '80'} strokeWidth={1.5} strokeLinejoin="round" />}
+          </g>
+        );
+      })}
       {play.routes.map(route => {
         const player = play.players.find(p => p.id === route.playerId);
         if (!player) return null;
@@ -212,6 +225,23 @@ function FieldSVG({ play }: { play: PlayData }) {
       <line x1={5} y1={0} x2={5} y2={H} stroke="#22d3ee" strokeWidth={2} opacity={0.15} />
       <line x1={W - 5} y1={0} x2={W - 5} y2={H} stroke="#22d3ee" strokeWidth={2} opacity={0.15} />
 
+      {/* Zone rendering — behind players */}
+      {(play.zones || []).map(zone => {
+        const player = play.players.find(p => p.id === zone.playerId);
+        const color = player ? PLAYER_CFG[player.type].color : '#a78bfa';
+        const freehandPath = zone.shape === 'freehand' && zone.points && zone.points.length > 2
+          ? 'M ' + zone.points.map(([px, py]) => `${px} ${py}`).join(' L ') + ' Z' : null;
+        return (
+          <g key={zone.id}>
+            {zone.shape === 'ellipse' && <ellipse cx={zone.cx} cy={zone.cy} rx={zone.rx} ry={zone.ry} fill={color + '22'} stroke={color + '90'} strokeWidth={2} strokeDasharray="8 4" />}
+            {zone.shape === 'rect' && <rect x={zone.cx - zone.rx} y={zone.cy - zone.ry} width={zone.rx * 2} height={zone.ry * 2} fill={color + '22'} stroke={color + '90'} strokeWidth={2} strokeDasharray="8 4" />}
+            {freehandPath && <path d={freehandPath} fill={color + '22'} stroke={color + '90'} strokeWidth={2} strokeLinejoin="round" />}
+            <circle cx={zone.cx} cy={zone.cy} r={3.5} fill={color} opacity={0.8} />
+            {player && <text x={zone.cx} y={zone.cy - 7} textAnchor="middle" fill={color} fontSize={8} fontFamily="monospace" fontWeight="bold" opacity={0.7}>{PLAYER_CFG[player.type].label}</text>}
+          </g>
+        );
+      })}
+
       {play.routes.map(route => {
         const player = play.players.find(p => p.id === route.playerId);
         if (!player) return null;
@@ -225,12 +255,20 @@ function FieldSVG({ play }: { play: PlayData }) {
         let px = player.x, py = player.y;
         if (animProgress > 0) {
           const route = play.routes.find(r => r.playerId === player.id);
+          const zone = (play.zones || []).find(z => z.playerId === player.id);
+          const zCenter = zone ? zoneCenter(zone) : null;
+          let animPts: [number, number][] | null = null;
           if (route && route.points.length > 0) {
-            const playerDuration = ANIM_DURATION / (route.speed ?? 1);
+            animPts = [[player.x, player.y], ...route.points];
+            if (zCenter) animPts.push(zCenter);
+          } else if (zCenter) {
+            animPts = [[player.x, player.y], zCenter];
+          }
+          if (animPts && animPts.length >= 2) {
+            const playerDuration = ANIM_DURATION / (route?.speed ?? 1);
             const raw = Math.min(animProgress / playerDuration, 1);
             const t = raw * raw * (3 - 2 * raw);
-            const pts: [number, number][] = [[player.x, player.y], ...route.points];
-            [px, py] = interpolatePolyline(pts, t);
+            [px, py] = interpolatePolyline(animPts, t);
           }
         }
         return (

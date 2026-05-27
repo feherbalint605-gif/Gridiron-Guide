@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { MousePointer, Pen, Plus, Trash2, Save, Check, X, FilePlus, AlertCircle, MessageSquare, FolderOpen, FolderPlus, ChevronRight, Play, Lock, Unlock, Users } from "lucide-react";
+import { MousePointer, Pen, Plus, Trash2, Save, Check, X, FilePlus, AlertCircle, MessageSquare, FolderOpen, FolderPlus, ChevronRight, Play, Lock, Unlock, Users, Shield, Circle, Square, Spline } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -8,7 +8,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
   W, H, YARD, PLAYER_CFG, OL_TYPES, DL_TYPES, OFF_SKILL_TYPES, DEF_ADD_TYPES, ROUTE_TREE, LOS_OPTIONS,
-  PlayerType, PlayMode, PlayPlayer, PlayRoute, PlayData, SavedPlay, RouteLineStyle, RouteEndStyle,
+  PlayerType, PlayMode, ZoneShape, PlayZone, zoneCenter, PlayPlayer, PlayRoute, PlayData, SavedPlay, RouteLineStyle, RouteEndStyle,
   clamp, makeDefaultPlay, makeDefaultDefensePlay, applyRouteTree, makeArrowPolygon, makeArrowPath, makeTeePoints, getEndSegment, interpolatePolyline, genId, snapLosToOption, yardFromY, yToYard
 } from "@/lib/playbook-types";
 
@@ -20,7 +20,7 @@ export default function PlaybookEditor() {
   const [play, setPlay] = useState<PlayData>(makeDefaultPlay);
   const [playName, setPlayName] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [tool, setTool] = useState<'select' | 'route'>('select');
+  const [tool, setTool] = useState<'select' | 'route' | 'zone'>('select');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
   const [routePts, setRoutePts] = useState<[number, number][] | null>(null);
@@ -41,12 +41,21 @@ export default function PlaybookEditor() {
   const [playerNoteText, setPlayerNoteText] = useState('');
   const [hoveredPlayer, setHoveredPlayer] = useState<string | null>(null);
   const [playMode, setPlayMode] = useState<PlayMode>('offense');
+  const [zoneTool, setZoneTool] = useState<ZoneShape>('ellipse');
+  const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
+  const [isDrawingZone, setIsDrawingZone] = useState(false);
+  const [zoneDrawStart, setZoneDrawStart] = useState<[number, number] | null>(null);
+  const [zonePreview, setZonePreview] = useState<PlayZone | null>(null);
+  const [resizingZone, setResizingZone] = useState<{ id: string; handle: 'rx' | 'ry' } | null>(null);
+  const [draggingZone, setDraggingZone] = useState<{ id: string; startSvgX: number; startSvgY: number; startCx: number; startCy: number } | null>(null);
 
   const [isAnimating, setIsAnimating] = useState(false);
   const [animProgress, setAnimProgress] = useState(0);
   const animFrameRef = useRef<number | null>(null);
   const animStartRef = useRef<number | null>(null);
   const ANIM_DURATION = 2500;
+
+  const hasAnimatablePlayers = play.routes.length > 0 || (play.zones || []).length > 0;
 
   const playAnimation = () => {
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
@@ -229,20 +238,29 @@ export default function PlaybookEditor() {
   const removeSelected = () => {
     if (!selectedId) return;
     const hasRoute = play.routes.some(r => r.playerId === selectedId);
-    if (hasRoute) {
+    const hasZone = (play.zones || []).some(z => z.playerId === selectedId);
+    if (hasRoute || hasZone) {
       setPlay(p => ({
         ...p,
         routes: p.routes.filter(r => r.playerId !== selectedId),
+        zones: (p.zones || []).filter(z => z.playerId !== selectedId),
       }));
     } else {
       setPlay(p => ({
         ...p,
         players: p.players.filter(pl => pl.id !== selectedId),
         routes: p.routes.filter(r => r.playerId !== selectedId),
+        zones: (p.zones || []).filter(z => z.playerId !== selectedId),
       }));
       setSelectedId(null);
     }
     setShowRouteMenu(null);
+  };
+
+  const deleteSelectedZone = () => {
+    if (!selectedZoneId) return;
+    setPlay(p => ({ ...p, zones: (p.zones || []).filter(z => z.id !== selectedZoneId) }));
+    setSelectedZoneId(null);
   };
 
   const openPlayerNote = (playerId: string) => {
@@ -385,6 +403,7 @@ export default function PlaybookEditor() {
     const [x, y] = getSvgXY(e);
     if (tool === 'select') {
       setSelectedId(null);
+      setSelectedZoneId(null);
       setShowRouteMenu(null);
     } else if (tool === 'route' && selectedId) {
       setIsDrawing(true);
@@ -392,12 +411,71 @@ export default function PlaybookEditor() {
       setRoutePts([[x, y]]);
       lastMoveTimeRef.current = Date.now();
       (e.currentTarget as SVGElement).setPointerCapture(e.pointerId);
+    } else if (tool === 'zone') {
+      if (zoneTool === 'freehand') {
+        setIsDrawingZone(true);
+        setZonePreview({ id: '_preview', playerId: selectedId || '', shape: 'freehand', cx: x, cy: y, rx: 0, ry: 0, points: [[x, y]] });
+      } else {
+        setIsDrawingZone(true);
+        setZoneDrawStart([x, y]);
+        setZonePreview({ id: '_preview', playerId: selectedId || '', shape: zoneTool, cx: x, cy: y, rx: 1, ry: 1 });
+      }
+      (e.currentTarget as SVGElement).setPointerCapture(e.pointerId);
     }
   };
 
   const onSvgPointerMove = (e: React.PointerEvent) => {
     const [x, y] = getSvgXY(e);
     setMousePos([x, y]);
+
+    if (resizingZone) {
+      setPlay(p => ({
+        ...p,
+        zones: (p.zones || []).map(z => {
+          if (z.id !== resizingZone.id) return z;
+          if (resizingZone.handle === 'rx') return { ...z, rx: Math.max(15, Math.abs(x - z.cx)) };
+          return { ...z, ry: Math.max(10, Math.abs(y - z.cy)) };
+        }),
+      }));
+      return;
+    }
+    if (draggingZone) {
+      const dx = x - draggingZone.startSvgX;
+      const dy = y - draggingZone.startSvgY;
+      setPlay(p => ({
+        ...p,
+        zones: (p.zones || []).map(z => {
+          if (z.id !== draggingZone.id) return z;
+          const newCx = draggingZone.startCx + dx;
+          const newCy = draggingZone.startCy + dy;
+          if (z.shape === 'freehand' && z.points) {
+            const ddx = newCx - z.cx;
+            const ddy = newCy - z.cy;
+            return { ...z, cx: newCx, cy: newCy, points: z.points.map(([px, py]) => [px + ddx, py + ddy] as [number, number]) };
+          }
+          return { ...z, cx: newCx, cy: newCy };
+        }),
+      }));
+      return;
+    }
+    if (isDrawingZone && tool === 'zone') {
+      if (zoneTool === 'freehand') {
+        setZonePreview(prev => {
+          if (!prev) return null;
+          const pts: [number, number][] = [...(prev.points || []), [x, y]];
+          const cx = pts.reduce((s, [px]) => s + px, 0) / pts.length;
+          const cy = pts.reduce((s, [, py]) => s + py, 0) / pts.length;
+          return { ...prev, cx, cy, points: pts };
+        });
+      } else if (zoneDrawStart) {
+        const cx = (x + zoneDrawStart[0]) / 2;
+        const cy = (y + zoneDrawStart[1]) / 2;
+        const rx = Math.max(5, Math.abs(x - zoneDrawStart[0]) / 2);
+        const ry = Math.max(5, Math.abs(y - zoneDrawStart[1]) / 2);
+        setZonePreview({ id: '_preview', playerId: selectedId || '', shape: zoneTool, cx, cy, rx, ry });
+      }
+      return;
+    }
     if (dragging) {
       setPlay(p => {
         const old = p.players.find(pl => pl.id === dragging);
@@ -430,6 +508,32 @@ export default function PlaybookEditor() {
 
   const onSvgPointerUp = () => {
     setDragging(null);
+    if (resizingZone) { setResizingZone(null); return; }
+    if (draggingZone) { setDraggingZone(null); return; }
+    if (isDrawingZone && zonePreview) {
+      const isValid = zonePreview.shape === 'freehand'
+        ? (zonePreview.points || []).length >= 4
+        : zonePreview.rx >= 15 && zonePreview.ry >= 8;
+      if (isValid) {
+        let pts = zonePreview.shape === 'freehand' ? simplifyFreehand(zonePreview.points || [], 4) : undefined;
+        let cx = zonePreview.cx, cy = zonePreview.cy;
+        if (pts && pts.length > 0) {
+          cx = pts.reduce((s, [px]) => s + px, 0) / pts.length;
+          cy = pts.reduce((s, [, py]) => s + py, 0) / pts.length;
+        }
+        const newZone: PlayZone = { ...zonePreview, id: genId(), playerId: selectedId || '', cx, cy, points: pts };
+        setPlay(p => ({
+          ...p,
+          zones: [...(p.zones || []).filter(z => z.playerId !== (selectedId || '')), newZone],
+        }));
+        setSelectedZoneId(newZone.id);
+      }
+      setIsDrawingZone(false);
+      setZoneDrawStart(null);
+      setZonePreview(null);
+      setTool('select');
+      return;
+    }
     if (isDrawing && routePts && routePts.length > 1) {
       finishRoute(willStraighten);
     } else if (isDrawing) {
@@ -730,7 +834,40 @@ export default function PlaybookEditor() {
             >
               <Pen className="w-3 h-3" /> Route rajz
             </button>
+            {playMode === 'defense' && (
+              <button
+                onClick={() => { setTool(tool === 'zone' ? 'select' : 'zone'); setRoutePts(null); setShowRouteMenu(null); }}
+                data-testid="button-tool-zone"
+                className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-bold transition-all",
+                  tool === 'zone' ? "bg-red-500 text-white" : "text-red-400/60 hover:text-red-300 hover:bg-white/5")}
+              >
+                <Shield className="w-3 h-3" /> Zóna rajz
+              </button>
+            )}
           </div>
+          {tool === 'zone' && playMode === 'defense' && (
+            <>
+              <div className="w-px h-4 bg-cyan-500/20" />
+              <div className="flex items-center gap-1 bg-black/40 rounded border border-red-500/20 p-0.5">
+                <span className="text-[9px] text-red-400/50 px-1">Alak:</span>
+                {([['ellipse', Circle, 'Ellipszis'], ['rect', Square, 'Téglalap'], ['freehand', Spline, 'Szabad']] as [ZoneShape, React.FC<{className?: string}>, string][]).map(([shape, Icon, label]) => (
+                  <button key={shape} onClick={() => setZoneTool(shape)}
+                    data-testid={`button-zone-shape-${shape}`}
+                    className={cn("flex items-center gap-1 px-1.5 py-0.5 text-[9px] rounded transition-colors",
+                      zoneTool === shape ? "bg-red-500/30 text-red-300 font-bold" : "text-red-400/50 hover:text-red-300")}>
+                    <Icon className="w-3 h-3" />{label}
+                  </button>
+                ))}
+              </div>
+              {selectedZoneId && (
+                <button onClick={deleteSelectedZone}
+                  data-testid="button-delete-zone"
+                  className="flex items-center gap-1 px-2 py-1 rounded text-xs font-bold text-red-400 hover:text-red-300 hover:bg-red-400/10 border border-red-400/30 transition-colors">
+                  <Trash2 className="w-3 h-3" /> Zóna törlése
+                </button>
+              )}
+            </>
+          )}
 
           <div className="w-px h-4 bg-cyan-500/20" />
 
@@ -809,7 +946,7 @@ export default function PlaybookEditor() {
             ref={svgRef}
             viewBox={`0 ${viewMinY} ${W} ${H}`}
             className={cn("w-full rounded-xl border border-cyan-500/20 block select-none",
-              tool === 'route' ? 'cursor-crosshair' : 'cursor-default')}
+              (tool === 'route' || tool === 'zone') ? 'cursor-crosshair' : 'cursor-default')}
             style={{ background: '#0a0a0f', touchAction: 'none' }}
             onPointerDown={onSvgPointerDown}
             onPointerMove={onSvgPointerMove}
@@ -875,6 +1012,76 @@ export default function PlaybookEditor() {
             <line x1={5} y1={viewMinY} x2={5} y2={viewMinY + H} stroke="#22d3ee" strokeWidth={2} opacity={0.15} />
             <line x1={W - 5} y1={viewMinY} x2={W - 5} y2={viewMinY + H} stroke="#22d3ee" strokeWidth={2} opacity={0.15} />
 
+            {/* Zone rendering — behind players, above field lines */}
+            {[...(play.zones || []), ...(zonePreview ? [zonePreview] : [])].map(zone => {
+              const player = play.players.find(p => p.id === zone.playerId);
+              const color = player ? PLAYER_CFG[player.type].color : '#a78bfa';
+              const sel = selectedZoneId === zone.id;
+              const isPreview = zone.id === '_preview';
+              const freehandPath = zone.shape === 'freehand' && zone.points && zone.points.length > 2
+                ? 'M ' + zone.points.map(([px, py]) => `${px} ${py}`).join(' L ') + ' Z'
+                : null;
+              return (
+                <g key={zone.id}
+                  style={{ cursor: isPreview ? 'crosshair' : 'move' }}
+                  onPointerDown={isPreview ? undefined : (e) => {
+                    e.stopPropagation();
+                    setSelectedZoneId(zone.id);
+                    setSelectedId(null);
+                    const [svgX, svgY] = getSvgXY(e);
+                    setDraggingZone({ id: zone.id, startSvgX: svgX, startSvgY: svgY, startCx: zone.cx, startCy: zone.cy });
+                    (e.currentTarget as SVGGElement).setPointerCapture(e.pointerId);
+                  }}
+                  onPointerUp={isPreview ? undefined : () => { setDraggingZone(null); }}
+                >
+                  {zone.shape === 'ellipse' && (
+                    <ellipse cx={zone.cx} cy={zone.cy} rx={zone.rx} ry={zone.ry}
+                      fill={color + '22'} stroke={color + (isPreview ? '60' : '90')}
+                      strokeWidth={isPreview ? 1.5 : 2} strokeDasharray="8 4" />
+                  )}
+                  {zone.shape === 'rect' && (
+                    <rect x={zone.cx - zone.rx} y={zone.cy - zone.ry} width={zone.rx * 2} height={zone.ry * 2}
+                      fill={color + '22'} stroke={color + (isPreview ? '60' : '90')}
+                      strokeWidth={isPreview ? 1.5 : 2} strokeDasharray="8 4" />
+                  )}
+                  {freehandPath && (
+                    <path d={freehandPath}
+                      fill={color + '22'} stroke={color + (isPreview ? '60' : '90')}
+                      strokeWidth={isPreview ? 1.5 : 2} strokeLinejoin="round" strokeDasharray={isPreview ? '4 3' : undefined} />
+                  )}
+                  {/* Center dot */}
+                  {!isPreview && <circle cx={zone.cx} cy={zone.cy} r={3.5} fill={color} opacity={0.85} />}
+                  {/* Player label */}
+                  {!isPreview && player && (
+                    <text x={zone.cx} y={zone.cy - 6} textAnchor="middle" fill={color}
+                      fontSize={8} fontFamily="monospace" fontWeight="bold" opacity={0.7}>
+                      {PLAYER_CFG[player.type].label}
+                    </text>
+                  )}
+                  {/* Resize handles — ellipse and rect only */}
+                  {sel && !isPreview && zone.shape !== 'freehand' && (
+                    <>
+                      <circle cx={zone.cx + zone.rx} cy={zone.cy} r={6} fill={color} stroke="#fff" strokeWidth={1.5}
+                        style={{ cursor: 'ew-resize' }}
+                        onPointerDown={(e) => { e.stopPropagation(); setResizingZone({ id: zone.id, handle: 'rx' }); (e.currentTarget as SVGCircleElement).setPointerCapture(e.pointerId); }} />
+                      <circle cx={zone.cx} cy={zone.cy + zone.ry} r={6} fill={color} stroke="#fff" strokeWidth={1.5}
+                        style={{ cursor: 'ns-resize' }}
+                        onPointerDown={(e) => { e.stopPropagation(); setResizingZone({ id: zone.id, handle: 'ry' }); (e.currentTarget as SVGCircleElement).setPointerCapture(e.pointerId); }} />
+                    </>
+                  )}
+                  {/* Delete handle */}
+                  {sel && !isPreview && (
+                    <g transform={`translate(${zone.shape === 'ellipse' ? zone.cx + zone.rx : zone.cx + zone.rx}, ${zone.shape === 'ellipse' ? zone.cy - zone.ry : zone.cy - zone.ry})`}
+                      style={{ cursor: 'pointer' }}
+                      onPointerDown={(e) => { e.stopPropagation(); deleteSelectedZone(); }}>
+                      <circle r={7} fill="#ef4444" stroke="#fff" strokeWidth={1.5} />
+                      <text textAnchor="middle" dominantBaseline="middle" fill="white" fontSize={9} fontWeight="bold">×</text>
+                    </g>
+                  )}
+                </g>
+              );
+            })}
+
             {play.routes.map(route => {
               const player = play.players.find(p => p.id === route.playerId);
               if (!player) return null;
@@ -902,12 +1109,21 @@ export default function PlaybookEditor() {
               let px = player.x, py = player.y;
               if (animProgress > 0) {
                 const route = play.routes.find(r => r.playerId === player.id);
+                const zone = (play.zones || []).find(z => z.playerId === player.id);
+                const zCenter = zone ? zoneCenter(zone) : null;
+                let animPts: [number, number][] | null = null;
                 if (route && route.points.length > 0) {
-                  const playerDuration = ANIM_DURATION / (route.speed ?? 1);
+                  animPts = [[player.x, player.y], ...route.points];
+                  if (zCenter) animPts.push(zCenter);
+                } else if (zCenter) {
+                  animPts = [[player.x, player.y], zCenter];
+                }
+                if (animPts && animPts.length >= 2) {
+                  const speed = route?.speed ?? 1;
+                  const playerDuration = ANIM_DURATION / speed;
                   const raw = Math.min(animProgress / playerDuration, 1);
                   const t = raw * raw * (3 - 2 * raw);
-                  const pts: [number, number][] = [[player.x, player.y], ...route.points];
-                  [px, py] = interpolatePolyline(pts, t);
+                  [px, py] = interpolatePolyline(animPts, t);
                 }
               }
               return (
@@ -970,6 +1186,28 @@ export default function PlaybookEditor() {
               </div>
             );
           })()}
+
+          {tool === 'zone' && (
+            <div className="absolute top-2 right-2 flex items-center gap-2">
+              {isDrawingZone ? (
+                <div className="px-2 py-1 bg-red-500/20 text-red-300 text-[10px] rounded border border-red-500/30 font-bold">
+                  {zoneTool === 'freehand' ? 'Rajzolás... engedd el a befejezéshez' : 'Húzd a zóna méretét...'}
+                </div>
+              ) : selectedId ? (
+                <div className="px-2 py-1 bg-black/80 text-red-400/70 text-[10px] rounded border border-red-500/20">
+                  Húzd a zóna rajzolásához ({zoneTool === 'ellipse' ? 'ellipszis' : zoneTool === 'rect' ? 'téglalap' : 'szabad'})
+                </div>
+              ) : (
+                <div className="px-2 py-1 bg-black/80 text-red-400/50 text-[10px] rounded border border-red-500/20">
+                  Először válassz játékost
+                </div>
+              )}
+              <button onClick={() => { setTool('select'); setIsDrawingZone(false); setZonePreview(null); setZoneDrawStart(null); }}
+                className="flex items-center gap-1 px-2 py-1 bg-black/80 text-red-400 text-xs font-bold rounded border border-red-400/30">
+                <X className="w-3 h-3" /> Mégse
+              </button>
+            </div>
+          )}
 
           {tool === 'route' && selectedId && (
             <div className="absolute top-2 right-2 flex flex-col items-end gap-1.5">
@@ -1139,13 +1377,13 @@ export default function PlaybookEditor() {
           })()}
           <button
             onClick={playAnimation}
-            disabled={isAnimating || play.routes.length === 0}
+            disabled={isAnimating || !hasAnimatablePlayers}
             data-testid="button-play-animation"
             className={cn(
               "absolute bottom-3 right-3 z-40 w-11 h-11 rounded-full flex items-center justify-center shadow-lg transition-all",
               isAnimating
                 ? "bg-cyan-500/20 border border-cyan-500/30 cursor-not-allowed"
-                : play.routes.length === 0
+                : !hasAnimatablePlayers
                   ? "bg-black/40 border border-cyan-500/10 cursor-not-allowed opacity-30"
                   : "bg-cyan-500/90 border border-cyan-400 hover:bg-cyan-400 hover:scale-105 cursor-pointer"
             )}

@@ -47,6 +47,23 @@ export type OffensePlayerType = 'LT' | 'LG' | 'C' | 'RG' | 'RT' | 'QB' | 'WR' | 
 export type DefensePlayerType = 'DE' | 'DT' | 'NT' | 'MLB' | 'OLB' | 'CB' | 'SS' | 'FS';
 export type PlayerType = OffensePlayerType | DefensePlayerType;
 
+export type ZoneShape = 'ellipse' | 'rect' | 'freehand';
+
+export interface PlayZone {
+  id: string;
+  playerId: string;
+  shape: ZoneShape;
+  cx: number;
+  cy: number;
+  rx: number;
+  ry: number;
+  points?: [number, number][];
+}
+
+export function zoneCenter(zone: PlayZone): [number, number] {
+  return [zone.cx, zone.cy];
+}
+
 export interface PlayPlayer {
   id: string;
   type: PlayerType;
@@ -72,6 +89,7 @@ export interface PlayData {
   losY: number;
   players: PlayPlayer[];
   routes: PlayRoute[];
+  zones?: PlayZone[];
   note?: string;
   playerNotes?: Record<string, string>;
   mode?: PlayMode;
