@@ -522,10 +522,22 @@ export default function PlaybookEditor() {
           cy = pts.reduce((s, [, py]) => s + py, 0) / pts.length;
         }
         const newZone: PlayZone = { ...zonePreview, id: genId(), playerId: selectedId || '', cx, cy, points: pts };
-        setPlay(p => ({
-          ...p,
-          zones: [...(p.zones || []).filter(z => z.playerId !== (selectedId || '')), newZone],
-        }));
+        const pid = selectedId || '';
+        setPlay(p => {
+          const existingRoute = p.routes.find(r => r.playerId === pid);
+          const autoRoute = {
+            playerId: pid,
+            points: [[cx, cy]] as [number, number][],
+            speed: existingRoute?.speed ?? 1,
+            lineStyle: existingRoute?.lineStyle ?? 'dashed' as const,
+            endStyle: 'tee' as const,
+          };
+          return {
+            ...p,
+            zones: [...(p.zones || []).filter(z => z.playerId !== pid), newZone],
+            routes: [...p.routes.filter(r => r.playerId !== pid), autoRoute],
+          };
+        });
         setSelectedZoneId(newZone.id);
       }
       setIsDrawingZone(false);
