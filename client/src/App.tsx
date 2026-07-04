@@ -12,9 +12,9 @@ import TeamChat from "@/pages/TeamChat";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useAuth } from "@/hooks/use-auth";
-import { useEffect, useState } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 import RoleSelection from "@/components/RoleSelection";
+import Login from "@/pages/Login";
 
 function AthleteRouter() {
   return (
@@ -36,21 +36,7 @@ function AthleteRouter() {
 
 function App() {
   const { isAuthenticated, isLoading, user } = useAuth();
-  const { toast } = useToast();
   const [showRoleSelect, setShowRoleSelect] = useState(false);
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      toast({
-        title: "Unauthorized",
-        description: "Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
-    }
-  }, [isAuthenticated, isLoading]);
 
   if (isLoading) {
     return (
@@ -58,6 +44,10 @@ function App() {
         GRIDIRON TRAINING...
       </div>
     );
+  }
+
+  if (!isAuthenticated) {
+    return <Login />;
   }
 
   if (isAuthenticated && showRoleSelect) {

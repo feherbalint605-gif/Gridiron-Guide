@@ -25,7 +25,7 @@ A web application for American football players to access position-specific work
 - **Backend**: Node.js, Express
 - **Data**: PostgreSQL (Drizzle ORM)
 - **Routing**: wouter
-- **Auth**: Google OAuth (`passport-google-oauth20`)
+- **Auth**: Email + password (`passport-local`, session-based, no external OAuth provider needed)
 
 ## Deploy to Vercel + Supabase (magyar útmutató)
 
@@ -54,13 +54,11 @@ A projekt **Settings → Environment Variables** menüjében add hozzá (lásd `
 |---|---|
 | `DATABASE_URL` | Supabase connection string, **pooler (6543) port**-tal, produkciós forgalomhoz |
 | `SESSION_SECRET` | Egy hosszú, véletlen string (session cookie aláírásához) |
-| `GOOGLE_CLIENT_ID` | Google Cloud Console-ból |
-| `GOOGLE_CLIENT_SECRET` | Google Cloud Console-ból |
 | `NODE_ENV` | `production` |
 
-A Google bejelentkezéshez a [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
-OAuth 2.0 kliensénél add hozzá az **Authorized redirect URI**-t:
-`https://<a-vercel-domained>/api/callback` (és fejlesztéshez `http://localhost:5000/api/callback`).
+A bejelentkezés e-mail + jelszó alapú (nincs szükség külső OAuth-providerre vagy
+Authorized redirect URI beállításra), így ez a két változó (`DATABASE_URL`,
+`SESSION_SECRET`) elég a bejelentkezés működéséhez.
 
 ### c) Supabase adatbázis inicializálása
 

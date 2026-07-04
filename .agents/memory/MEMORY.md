@@ -1,0 +1,1 @@
+- [Football app auth migration](football-app-auth.md) — email+password (passport-local) replaced Replit Auth then Google OAuth; keep session user shape `{claims:{sub}}` for compatibility.

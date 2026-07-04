@@ -35,19 +35,19 @@ Preferred communication style: Simple, everyday language.
 - **ORM**: Drizzle ORM with `drizzle-zod` for schema-to-Zod integration
 - **Schema**: Defined in `shared/schema.ts`
   - `positions` table: `id` (text PK), `name`, `description`, `details` (JSONB containing workouts, diet, film study)
-  - `users` table: User storage (id = Google profile id, email, name, avatar, role, coach/team links)
+  - `users` table: User storage (id = generated UUID, email, hashed password, name, avatar, role, coach/team links)
   - `sessions` table: For session management
 - **Storage Pattern**: `server/storage.ts` defines an `IStorage` interface with a `DatabaseStorage` implementation. All data access goes through the exported `storage` singleton
 - **Migrations**: Drizzle Kit configured in `drizzle.config.ts`, migrations output to `./migrations`. Use `npm run db:push` to push schema changes
 
 ### Authentication
-- **Provider**: Google OAuth (via `passport-google-oauth20`) — platform-independent, works the same on Replit and on external hosts (e.g. Vercel)
+- **Provider**: Email + password (via `passport-local`) — fully platform-independent, no external OAuth provider or redirect-URI configuration needed, works identically on Replit and on external hosts (e.g. Vercel)
 - **Implementation**: Located in `server/auth/`
-  - `googleAuth.ts`: Registers a Google OAuth strategy per hostname (supports multiple domains — dev, custom domain, Vercel domain — each must be added as an authorized redirect URI in the Google Cloud Console as `https://<domain>/api/callback`), session middleware using `connect-pg-simple`
+  - `localAuth.ts`: Registers the Passport local strategy, session middleware (`connect-pg-simple`), password hashing/verification using Node's built-in `crypto.scrypt` (no native dependency), and the `/api/register`, `/api/login`, `/api/logout` routes
   - `routes.ts`: `/api/auth/user` endpoint for fetching the current user
-  - `storage.ts`: User upsert/get operations against the `users` table
-- **Client Side**: `useAuth` hook in `client/src/hooks/use-auth.ts` checks authentication status and redirects to `/api/login` if unauthenticated
-- **Session**: Stored in PostgreSQL `sessions` table (works unchanged in serverless since state is never kept in memory between requests), 1-week TTL, requires `SESSION_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` env vars
+  - `storage.ts`: User create/get operations against the `users` table (password hash is never returned to the client — `getUser`/`createUser` select only public columns)
+- **Client Side**: `client/src/pages/Login.tsx` renders a login/register form; `useAuth` hook in `client/src/hooks/use-auth.ts` checks authentication status. `App.tsx` shows the `Login` page directly when unauthenticated (no redirect)
+- **Session**: Stored in PostgreSQL `sessions` table (works unchanged in serverless since state is never kept in memory between requests), 1-week TTL, requires only `SESSION_SECRET` env var (no OAuth client id/secret needed)
 
 ### Build System
 - **Development**: `npm run dev` runs `tsx server/index.ts` which sets up Vite dev server with HMR
