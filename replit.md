@@ -22,7 +22,9 @@ Preferred communication style: Simple, everyday language.
 
 ### Backend
 - **Framework**: Express.js running on Node with TypeScript (executed via tsx)
-- **Server Entry**: `server/index.ts` creates an HTTP server, registers routes, and serves static files in production or sets up Vite dev middleware in development
+- **App Factory**: `server/app.ts` builds and wires the Express app (middleware, routes, error handler) without starting a listener — shared by both entry points below
+- **Server Entry (long-running host, e.g. Replit)**: `server/index.ts` calls `createApp()`, then serves static files in production or sets up Vite dev middleware in development, then starts listening
+- **Server Entry (Vercel serverless)**: `api/index.ts` calls `createApp()` once per cold start and forwards each request to the Express app; static frontend files are served by Vercel directly from `dist/public` (see `vercel.json`)
 - **API Routes**: Defined in `server/routes.ts`, using a shared route manifest from `shared/routes.ts`
   - `GET /api/positions` — list all positions
   - `GET /api/positions/:id` — get detailed position data (workouts, diet, film study)
@@ -33,19 +35,19 @@ Preferred communication style: Simple, everyday language.
 - **ORM**: Drizzle ORM with `drizzle-zod` for schema-to-Zod integration
 - **Schema**: Defined in `shared/schema.ts`
   - `positions` table: `id` (text PK), `name`, `description`, `details` (JSONB containing workouts, diet, film study)
-  - `users` table: For Replit Auth user storage
+  - `users` table: User storage (id = Google profile id, email, name, avatar, role, coach/team links)
   - `sessions` table: For session management
 - **Storage Pattern**: `server/storage.ts` defines an `IStorage` interface with a `DatabaseStorage` implementation. All data access goes through the exported `storage` singleton
 - **Migrations**: Drizzle Kit configured in `drizzle.config.ts`, migrations output to `./migrations`. Use `npm run db:push` to push schema changes
 
 ### Authentication
-- **Provider**: Replit Auth (OpenID Connect)
-- **Implementation**: Located in `server/replit_integrations/auth/`
-  - `replitAuth.ts`: OIDC discovery, passport strategy, session middleware using `connect-pg-simple`
+- **Provider**: Google OAuth (via `passport-google-oauth20`) — platform-independent, works the same on Replit and on external hosts (e.g. Vercel)
+- **Implementation**: Located in `server/auth/`
+  - `googleAuth.ts`: Registers a Google OAuth strategy per hostname (supports multiple domains — dev, custom domain, Vercel domain — each must be added as an authorized redirect URI in the Google Cloud Console as `https://<domain>/api/callback`), session middleware using `connect-pg-simple`
   - `routes.ts`: `/api/auth/user` endpoint for fetching the current user
   - `storage.ts`: User upsert/get operations against the `users` table
 - **Client Side**: `useAuth` hook in `client/src/hooks/use-auth.ts` checks authentication status and redirects to `/api/login` if unauthenticated
-- **Session**: Stored in PostgreSQL `sessions` table, 1-week TTL, requires `SESSION_SECRET` env var
+- **Session**: Stored in PostgreSQL `sessions` table (works unchanged in serverless since state is never kept in memory between requests), 1-week TTL, requires `SESSION_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` env vars
 
 ### Build System
 - **Development**: `npm run dev` runs `tsx server/index.ts` which sets up Vite dev server with HMR
@@ -62,15 +64,17 @@ Preferred communication style: Simple, everyday language.
 ## External Dependencies
 
 ### Required Services
-- **PostgreSQL Database**: Required. Connection via `DATABASE_URL` environment variable. Used for positions data, user accounts, and session storage
-- **Replit Auth (OIDC)**: Authentication provider. Requires `REPL_ID` and `SESSION_SECRET` environment variables. Issuer URL defaults to `https://replit.com/oidc`
+- **PostgreSQL Database**: Required. Connection via `DATABASE_URL` environment variable (currently a Supabase Postgres instance, pgbouncer/pooling port 6543). Used for positions data, user accounts, and session storage
+- **Google OAuth**: Authentication provider. Requires `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` env vars, plus `SESSION_SECRET` for signing session cookies. Each domain the app runs on must be added as an authorized redirect URI in the Google Cloud Console
 
 ### Key npm Packages
-- **Server**: express, drizzle-orm, pg, passport, express-session, connect-pg-simple, openid-client, memoizee
+- **Server**: express, drizzle-orm, pg, passport, passport-google-oauth20, express-session, connect-pg-simple, memoizee
 - **Client**: react, @tanstack/react-query, wouter, framer-motion, radix-ui primitives, tailwindcss, lucide-react, zod
 - **Build**: vite, esbuild, tsx, @vitejs/plugin-react
 
-### Replit-Specific Plugins
-- `@replit/vite-plugin-runtime-error-modal`: Error overlay in development
-- `@replit/vite-plugin-cartographer`: Dev tooling (dev only)
-- `@replit/vite-plugin-dev-banner`: Dev banner (dev only)
+### Replit-Specific Plugins (dev-only, optional)
+- `@replit/vite-plugin-runtime-error-modal`, `@replit/vite-plugin-cartographer`, `@replit/vite-plugin-dev-banner` — dynamically imported in `vite.config.ts` only when `REPL_ID` is set, so the build is unaffected when these aren't installed on other platforms (e.g. Vercel)
+
+### Deployment Targets
+- **Replit**: Runs via `npm run dev` / `npm start` as before, no changes needed
+- **Vercel**: `vercel.json` builds the client with `npm run build` and serves `dist/public` statically; API requests are routed to the serverless function in `api/index.ts`, which wraps the same Express app (`server/app.ts`) used by the Replit entry point. See `README.md` for setup steps

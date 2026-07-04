@@ -2,7 +2,7 @@ import type { Express } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
-import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
+import { setupAuth, registerAuthRoutes } from "./auth";
 import { db } from "./db";
 import { users } from "@shared/models/auth";
 import { workoutLogs, athletePlanOverrides, coachComments, playbookPlays, teams, teamMembers, teamMessages, playbookFolderTeams } from "@shared/schema";

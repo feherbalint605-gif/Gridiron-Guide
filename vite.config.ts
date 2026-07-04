@@ -1,24 +1,26 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+
+// Replit-only dev tooling. These packages are dynamically imported and only
+// loaded when running inside a Replit workspace (REPL_ID is set), so this
+// config works unchanged when building/running on other platforms (e.g.
+// Vercel), even if these optional dev dependencies aren't installed there.
+const isReplitDev =
+  process.env.NODE_ENV !== "production" && process.env.REPL_ID !== undefined;
+
+const replitPlugins = isReplitDev
+  ? await Promise.all([
+      import("@replit/vite-plugin-runtime-error-modal").then((m) =>
+        m.default(),
+      ),
+      import("@replit/vite-plugin-cartographer").then((m) => m.cartographer()),
+      import("@replit/vite-plugin-dev-banner").then((m) => m.devBanner()),
+    ]).catch(() => [])
+  : [];
 
 export default defineConfig({
-  plugins: [
-    react(),
-    runtimeErrorOverlay(),
-    ...(process.env.NODE_ENV !== "production" &&
-    process.env.REPL_ID !== undefined
-      ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer(),
-          ),
-          await import("@replit/vite-plugin-dev-banner").then((m) =>
-            m.devBanner(),
-          ),
-        ]
-      : []),
-  ],
+  plugins: [react(), ...replitPlugins],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),

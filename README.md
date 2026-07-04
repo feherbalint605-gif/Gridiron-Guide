@@ -23,5 +23,64 @@ A web application for American football players to access position-specific work
 
 - **Frontend**: React, Vite, Tailwind CSS, shadcn/ui
 - **Backend**: Node.js, Express
-- **Data**: Static JSON data served via REST API
+- **Data**: PostgreSQL (Drizzle ORM)
 - **Routing**: wouter
+- **Auth**: Google OAuth (`passport-google-oauth20`)
+
+## Deploy to Vercel + Supabase (magyar útmutató)
+
+Ez a projekt platformfüggetlen: ugyanaz a kód fut Replit-en és Vercel-en is.
+A `server/app.ts` építi fel az Express appot, `server/index.ts` futtatja hosszan élő
+szerverként (Replit/bármilyen Node host), `api/index.ts` pedig ugyanezt Vercel
+serverless function-ként csomagolja be. Az adatbázis-kapcsolat a `DATABASE_URL`
+környezeti változóból jön, natív `pg` driverrel — ez már most is Supabase Postgres.
+
+### a) A repó GitHub-ra és Vercel-hez kötése
+
+1. Pushold a projektet egy GitHub repóba (Replit-ből: Git panel → "Push to GitHub",
+   vagy `git remote add origin ...` majd `git push`).
+2. A [vercel.com](https://vercel.com) dashboardon: **Add New → Project**, válaszd ki a
+   GitHub repót.
+3. Vercel automatikusan felismeri a `vercel.json`-t:
+   - Build parancs: `npm run build`
+   - Frontend statikus fájlok: `dist/public`
+   - API: `api/index.ts` → egyetlen serverless function, minden `/api/*` kérést ide irányít
+
+### b) Környezeti változók beállítása a Vercel dashboardon
+
+A projekt **Settings → Environment Variables** menüjében add hozzá (lásd `.env.example`):
+
+| Változó | Érték |
+|---|---|
+| `DATABASE_URL` | Supabase connection string, **pooler (6543) port**-tal, produkciós forgalomhoz |
+| `SESSION_SECRET` | Egy hosszú, véletlen string (session cookie aláírásához) |
+| `GOOGLE_CLIENT_ID` | Google Cloud Console-ból |
+| `GOOGLE_CLIENT_SECRET` | Google Cloud Console-ból |
+| `NODE_ENV` | `production` |
+
+A Google bejelentkezéshez a [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+OAuth 2.0 kliensénél add hozzá az **Authorized redirect URI**-t:
+`https://<a-vercel-domained>/api/callback` (és fejlesztéshez `http://localhost:5000/api/callback`).
+
+### c) Supabase adatbázis inicializálása
+
+1. Hozz létre egy projektet a [supabase.com](https://supabase.com) dashboardon (ha még nincs).
+2. Kapcsolati stringet a **Settings → Database → Connection string** alól szerezd meg:
+   - Migrációhoz (`drizzle-kit push`) a **direkt kapcsolat** (5432 port) ajánlott.
+   - Futó appnak/serverless-nek a **Connection Pooling (pgbouncer, 6543 port)** ajánlott.
+3. Állítsd be lokálisan a `DATABASE_URL`-t (pl. `.env` fájlban, ami nincs commitolva),
+   majd futtasd:
+   ```bash
+   npm run db:push
+   ```
+   Ez létrehozza/frissíti a táblákat a `shared/schema.ts` alapján, migrációs fájlok
+   módosítása nélkül.
+4. Ellenőrizd a Supabase Table Editorban, hogy a `users`, `sessions`, `positions` stb.
+   táblák létrejöttek.
+
+### Megjegyzés
+
+A `.replit` és a Replit-specifikus Vite pluginok (`@replit/vite-plugin-*`) a projektben
+maradtak, hogy a fejlesztés a Replit felületén továbbra is zökkenőmentes legyen — ezek
+csak `REPL_ID` környezeti változó megléte esetén töltődnek be, Vercel-en nincs rájuk
+szükség és nem is aktiválódnak.
