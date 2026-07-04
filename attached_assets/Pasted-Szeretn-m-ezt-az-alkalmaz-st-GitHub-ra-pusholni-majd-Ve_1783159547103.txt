@@ -1,0 +1,36 @@
+Szeretném ezt az alkalmazást GitHub-ra pusholni, majd Vercel-en hostolni, az adatbázist pedig Supabase-re (PostgreSQL) migrálni. Jelenleg a projekt a Replit saját futtatókörnyezetére van optimalizálva, ezért kérlek végezd el a következő átalakításokat:
+
+1. REPLIT-SPECIFIKUS ELEMEK ELTÁVOLÍTÁSA
+- Vizsgáld át a package.json-t, és távolíts el minden Replit-specifikus csomagot (pl. @replit/vite-plugin-cartographer, @replit/vite-plugin-runtime-error-modal, stb.).
+- Töröld vagy tedd inaktívvá a .replit és replit.nix fájlokat, ha vannak.
+- Vizsgáld át a vite.config.ts-t és távolítsd el belőle a Replit-specifikus pluginokat/beállításokat.
+- Keress rá minden helyre a kódban, ahol REPL_ID, REPLIT_DEV_DOMAIN vagy hasonló Replit-only környezeti változó van használva, és cseréld le platformfüggetlen megoldásra.
+
+2. BACKEND ÁTALAKÍTÁSA VERCEL SZERVERLESS FÜGGVÉNYEKRE
+- A jelenlegi Express szerver route-jait alakítsd át úgy, hogy Vercel serverless function-ként (api/ mappa, .ts fájlok) is működjenek, VAGY ha ez nem praktikus, állítsd be úgy, hogy az Express app egyetlen catch-all serverless function-ként fusson a Vercel-en (api/index.ts export default app formában).
+- Ha van munkamenet-kezelés (session/cookie alapú auth), alakítsd át statelessé (pl. JWT alapú vagy adatbázisban tárolt session), mert a serverless függvények nem tartanak memóriában állapotot a hívások között.
+- Hozz létre egy vercel.json fájlt a megfelelő build és route beállításokkal (frontend statikus build + api routing).
+
+3. ADATBÁZIS ÁTÁLLÍTÁSA SUPABASE-RE
+- A Drizzle konfigurációt (drizzle.config.ts) állítsd át úgy, hogy a kapcsolati stringet a DATABASE_URL környezeti változóból olvassa, Supabase Postgres formátumban (postgresql://...supabase.co:5432/postgres).
+- Ha jelenleg Neon-specifikus vagy Replit-beépített adatbázis-driver van használva (pl. @neondatabase/serverless), cseréld le sima 'postgres' vagy 'pg' csomagra, ami Supabase-szel is kompatibilis.
+- Ellenőrizd, hogy a connection pooling megfelelően van-e kezelve serverless környezetben (Supabase esetén ez fontos: használjuk a Supabase "Connection Pooling" (pgbouncer) portját a produkciós kapcsolathoz).
+- Ne változtass a séma/migrációs fájlokon, csak a kapcsolódási rétegen.
+
+4. KÖRNYEZETI VÁLTOZÓK
+- Hozz létre egy .env.example fájlt, amiben felsorolod az összes szükséges környezeti változót (DATABASE_URL, és bármi más API kulcs/secret, amit a projekt használ), placeholder értékekkel.
+- Győződj meg róla, hogy a kódban sehol nincs hardcode-olt secret vagy Replit Secrets-specifikus hivatkozás.
+- Ellenőrizd, hogy a .env szerepel-e a .gitignore-ban.
+
+5. BUILD ÉS SCRIPTEK
+- Ellenőrizd/javítsd a package.json build és start scriptjeit úgy, hogy Vercel-kompatibilisek legyenek (pl. "build" script generálja a frontendet és a backend bundle-t is, ha szükséges).
+- Ha van monorepo-szerű felépítés (client/ és server/ mappa egy repóban), tisztázd, hogy ez kompatibilis-e a Vercel build folyamatával, és ha kell, igazítsd a mappastruktúrát.
+
+6. VÉGEREDMÉNY
+- A módosítások után a projektnek tiszta git repóként kell működnie, Replit-függőségek nélkül.
+- Írj egy rövid README.md szekciót, ami leírja, hogyan kell:
+  a) a repót Vercel-hez kötni,
+  b) beállítani a szükséges környezeti változókat a Vercel dashboardon,
+  c) a Supabase adatbázist inicializálni (drizzle push/migrate paranccsal).
+
+Kérlek lépésről lépésre haladj, és minden nagyobb változtatás után röviden foglald össze, mit módosítottál
