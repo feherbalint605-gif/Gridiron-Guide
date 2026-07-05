@@ -32,12 +32,11 @@ const allowlist = [
 
 async function buildAll() {
   await rm("dist", { recursive: true, force: true });
-  await rm("api/index.js", { force: true });
 
   console.log("building client...");
   await viteBuild();
 
-  console.log("building server (Replit entry)...");
+  console.log("building server...");
   const pkg = JSON.parse(await readFile("package.json", "utf-8"));
   const allDeps = [
     ...Object.keys(pkg.dependencies || {}),
@@ -57,22 +56,6 @@ async function buildAll() {
     minify: true,
     external: externals,
     logLevel: "info",
-  });
-
-  console.log("building api function (Vercel serverless entry)...");
-  await esbuild({
-    entryPoints: ["api/index.ts"],
-    platform: "node",
-    bundle: true,
-    format: "cjs",
-    outfile: "api/index.js",
-    define: {
-      "process.env.NODE_ENV": '"production"',
-    },
-    minify: true,
-    external: externals,
-    logLevel: "info",
-    tsconfig: "./tsconfig.json",
   });
 }
 

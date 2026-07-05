@@ -1,0 +1,22 @@
+A Vercel deploy azonnal (1 másodperc után, még a build előtt) a következő hibával áll le:
+
+Error: The pattern "api/index.js" defined in `functions` doesn't match any Serverless Functions inside the `api` directory.
+
+A probléma oka: a vercel.json "functions" szekciója az "api/index.js" mintára hivatkozik, de ez a fájl csak a build script (script/build.mjs) FUTÁSA KÖZBEN jön létre generált bundle-ként — a git repóban csak az api/index.ts forrásfájl van commitolva. A Vercel viszont a "functions" mintákat a deploy VALIDÁCIÓS fázisában ellenőrzi, MIELŐTT a build lefutna, így nem találja a még nem létező api/index.js-t.
+
+Kérlek javítsd az alábbi módon:
+
+1. TÁVOLÍTSD EL A "FUNCTIONS" SZEKCIÓT A VERCEL.JSON-BÓL
+- A vercel.json-ban töröld ki a teljes "functions" objektumot (ami az api/index.js mintára és a runtime beállításokra hivatkozik).
+- A Vercel alapértelmezetten automatikusan felismeri és serverless function-ként kezeli az api/ mappában lévő fájlokat, nincs szükség explicit "functions" konfigurációra, hacsak nem akarunk egyedi memory/timeout beállítást megadni.
+
+2. HA EGYEDI RUNTIME BEÁLLÍTÁS SZÜKSÉGES (pl. Node.js verzió, memória, timeout)
+- Ha mégis szükség van "functions" konfigurációra (pl. hosszabb timeout miatt), akkor a mintának az api/index.ts-re kell mutatnia (a forrásfájlra, ami ténylegesen a repóban van), NE a build által generált api/index.js-re. A Vercel a saját build folyamata során fogja lefordítani.
+- FONTOS: ha az api/index.ts-t hagyjuk, hogy a Vercel saját maga fordítsa (natív TypeScript function support-tal), akkor a script/build.mjs-ben lévő, api/index.js-t generáló lépést ezzel párhuzamosan NE hozza létre/írja felül ugyanazt a fájlt, mert ütközés lehet. Válasszuk az egyik megközelítést:
+  a) VAGY hagyjuk, hogy a Vercel natívan fordítsa az api/index.ts-t (ekkor a build.mjs-ből távolítsuk el az api bundle-generáló lépést, és a vercel.json-ban se legyen "functions" override),
+  b) VAGY a build.mjs generálja az api/index.js-t, de akkor a vercel.json-ban SEMMILYEN "functions" mintát ne adjunk meg explicit módon, hogy a Vercel a build UTÁN, a kimeneti fájlok alapján ismerje fel automatikusan a function-t.
+- A biztonságosabb és egyszerűbb megoldás az (a) opció: hagyatkozzunk a Vercel natív TypeScript function támogatására, és ne bonyolítsuk custom build lépéssel az api mappát.
+
+Kérlek válaszd ki a (a) opciót ha lehetséges - azaz távolítsd el teljesen a "functions" szekciót a vercel.json-ból, és győződj meg róla, hogy az api/index.ts önmagában, minden szükséges importtal (server/app és minden almappa) helyesen fel tud épülni, amikor a Vercel natívan lefordítja. Ha ehhez a self-contained bundle-ölés (amit az előbb a script/build.mjs-be tettünk) már nem szükséges, azt is távolítsd el, hogy ne legyen felesleges duplikáció.
+
+Kérlek a módosítás után foglald össze, mit tartalmaz most a vercel.json, és hogyan épül fel az api/index.ts.
