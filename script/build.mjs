@@ -36,7 +36,7 @@ async function buildAll() {
   console.log("building client...");
   await viteBuild();
 
-  console.log("building server...");
+  console.log("building server (Replit entry)...");
   const pkg = JSON.parse(await readFile("package.json", "utf-8"));
   const allDeps = [
     ...Object.keys(pkg.dependencies || {}),
@@ -57,6 +57,32 @@ async function buildAll() {
     external: externals,
     logLevel: "info",
   });
+
+  console.log("building api function (Vercel serverless entry)...");
+  await esbuild({
+    entryPoints: ["api/index.ts"],
+    platform: "node",
+    bundle: true,
+    format: "cjs",
+    outfile: "api/index.js",
+    define: {
+      "process.env.NODE_ENV": '"production"',
+    },
+    minify: true,
+    external: externals,
+    logLevel: "info",
+    tsconfig: "./tsconfig.json",
+  });
+
+  // On Vercel, remove the original TypeScript file so the platform does not
+  // try to natively compile it (which fails because it cannot bundle
+  // ../server/app). The bundled api/index.js (generated above) is
+  // self-contained and includes all server logic. Guarded by VERCEL env var
+  // so running the build locally on Replit does not delete the source file.
+  if (process.env.VERCEL) {
+    console.log("cleaning up api/index.ts (Vercel build)...");
+    await rm("api/index.ts", { force: true });
+  }
 }
 
 buildAll().catch((err) => {

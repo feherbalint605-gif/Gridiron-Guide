@@ -1,0 +1,25 @@
+A Vercel deploy sikeresen lefut, DE a runtime-ban továbbra is ugyanaz a hiba jelentkezik minden API hívásnál:
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/var/task/server/app' imported from /var/task/api/index.js
+
+Ez annak ellenére történik, hogy eltávolítottuk a "functions" override-ot a vercel.json-ból, és a Vercel natívan fordítja az api/index.ts-t. Ez arra utal, hogy a Vercel build/bundler lefordítja az index.ts-t, de NEM húzza be/csomagolja be automatikusan a hozzá tartozó server/app modult és annak függőségeit.
+
+Kérlek vizsgáld meg és ellenőrizd az alábbi lehetséges okokat sorban:
+
+1. STATIKUS VS DINAMIKUS IMPORT
+- Nyisd meg az api/index.ts fájlt, és nézd meg pontosan, HOGYAN importálja a server/app-ot.
+- Ha dinamikus importtal történik (pl. "const app = await import('../server/app')" vagy "require('../server/app')" futásidőben, feltételesen), az megakadályozza, hogy a Vercel bundlere statikusan felismerje és becsomagolja a modult. Cseréld le sima, statikus ES import-ra a fájl tetején: "import app from '../server/app'" (vagy a megfelelő named/default export szerint).
+
+2. .VERCELIGNORE ELLENŐRZÉSE
+- Nézd meg, van-e a projekt gyökerében .vercelignore fájl, és ha igen, nem zárja-e ki véletlenül a server/ mappát vagy annak tartalmát a deployból.
+
+3. TSCONFIG PATH ALIAS ELLENŐRZÉSE
+- Nézd meg a tsconfig.json "paths" szekcióját, van-e bármilyen alias (pl. "@server/*"), amit az api/index.ts esetleg használ a server mappa importálásához.
+- Ha van ilyen alias, és az api/index.ts ezt használja sima relatív import helyett, ellenőrizd, hogy ez az alias fel tud-e oldódni futásidőben a Vercel serverless környezetben (gyakran NEM oldódik fel, mert az csak fejlesztési/build-idejű TypeScript segédlet, futásidőben Node.js nem ismeri). Ha van ilyen alias használva, cseréld le sima relatív import útvonalra (pl. "../server/app").
+
+4. HA A FENTIEK EGYIKE SEM SEGÍT: TÉRJÜNK VISSZA A MANUÁLIS BUNDLE-ÖLÉSHEZ, DE HELYESEN
+- Ha a natív Vercel TypeScript function támogatás nem képes helyesen bundle-elni a helyi importokat, akkor generáljunk ismét egy self-contained api/index.js bundle-t esbuild-del a build script-ben (mint korábban), DE ezúttal a vercel.json-ban NE adjunk meg semmilyen "functions" override-ot (mert az okozta a "pattern doesn't match" hibát a validációs fázisban).
+- A Vercel a build UTÁN, a fájlrendszer alapján automatikusan felismeri az api/index.js-t function-ként, explicit konfiguráció nélkül is - tehát a bundle-ölés és a "functions" mező hiánya EGYSZERRE tud működni, ha jól csináljuk.
+- Ellenőrizd az esbuild bundle parancsban, hogy a "bundle: true" opció be van-e kapcsolva (ez fontos, mert enélkül csak lefordítja, de nem csomagolja be a helyi importokat).
+
+Kérlek menj végig ezeken a lépéseken sorban, és minden egyes ellenőrzés eredményét írd le, mielőtt a következő lépésre lépnél.
