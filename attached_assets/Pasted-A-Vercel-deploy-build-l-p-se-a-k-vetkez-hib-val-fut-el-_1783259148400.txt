@@ -1,0 +1,22 @@
+A Vercel deploy build lépése a következő hibával fut el:
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@vitejs/plugin-react' imported from vite.config.ts
+
+Ez azt jelenti, hogy a vite.config.ts importálja a @vitejs/plugin-react csomagot, de az build közben nem érhető el a Vercel környezetben. Kérlek javítsd az alábbiak szerint:
+
+1. ELLENŐRIZD A VITE.CONFIG.TS ÖSSZES IMPORTJÁT
+- Nyisd meg a vite.config.ts fájlt, és listázd ki MINDEN importált csomagot (pl. @vitejs/plugin-react, és bármi más plugin, ami esetleg még szerepel benne, pl. @vitejs/plugin-react-swc, vite-tsconfig-paths, stb.).
+
+2. ELLENŐRIZD A PACKAGE.JSON-T
+- Nézd meg, hogy ezek a csomagok szerepelnek-e egyáltalán a package.json "dependencies" vagy "devDependencies" szekciójában.
+- Ha valamelyik hiányzik teljesen (tehát nincs se dependencies, se devDependencies alatt, csak "véletlenül" ott volt a node_modules-ban Replit-en), add hozzá explicit módon a package.json "dependencies" szekciójához, a megfelelő, telepített verziószámmal.
+- Ha megvan, de a "devDependencies"-ben van, mozgasd át a "dependencies" közé — ugyanúgy, ahogy korábban az esbuild és vite csomagokkal is tettük —, mert a Vercel build csak a "dependencies"-t telepíti garantáltan build közben.
+
+3. ÁLTALÁNOS ELLENŐRZÉS MINDEN BUILD-IDŐBEN HASZNÁLT CSOMAGRA
+- Nézd át a teljes projektet (vite.config.ts, script/build.mjs, és minden más build-time konfigurációs fájl), és listázz ki minden olyan csomagot, amit ezek importálnak.
+- Győződj meg róla, hogy MINDEGYIK szerepel a package.json "dependencies" szekciójában, ne csak devDependencies-ben, hogy elkerüljük a további, egyenként felbukkanó "Cannot find package" hibákat a következő deployoknál.
+
+4. TISZTA TELEPÍTÉS TESZTELÉSE
+- A módosítás után töröld a node_modules mappát és a package-lock.json-t, futtass egy tiszta "npm install"-t, majd futtasd le a build parancsot (node script/build.mjs) lokálisan, hogy megbizonyosodj róla, minden szükséges csomag elérhető és a build hiba nélkül lefut.
+
+Kérlek a módosítás után listázd ki, mely csomagokat mozgattad át vagy adtál hozzá a "dependencies" szekcióhoz.
