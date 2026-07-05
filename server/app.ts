@@ -69,13 +69,21 @@ export async function createApp(): Promise<{ app: express.Express; httpServer: S
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
-    console.error("Internal Server Error:", err);
+    console.error("[GLOBAL ERROR HANDLER]", err);
 
     if (res.headersSent) {
       return next(err);
     }
 
     return res.status(status).json({ message });
+  });
+
+  process.on("unhandledRejection", (reason) => {
+    console.error("[UNHANDLED REJECTION]", reason);
+  });
+
+  process.on("uncaughtException", (error) => {
+    console.error("[UNCAUGHT EXCEPTION]", error);
   });
 
   return { app, httpServer };

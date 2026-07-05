@@ -89,50 +89,73 @@ export async function setupAuth(app: Express) {
   });
 
   app.post("/api/register", async (req, res, next) => {
+    console.log("[REGISTER] Request received:", req.method, req.path, req.body);
     try {
       const email = String(req.body.email || "").trim().toLowerCase();
       const password = String(req.body.password || "");
       const firstName = req.body.firstName ? String(req.body.firstName) : undefined;
       const lastName = req.body.lastName ? String(req.body.lastName) : undefined;
 
+      console.log("[REGISTER] Parsed input:", { email, firstName, lastName, passwordLength: password.length });
+
       if (!email || !email.includes("@")) {
+        console.log("[REGISTER] Validation failed: invalid email");
         return res.status(400).json({ message: "Érvényes e-mail cím szükséges." });
       }
       if (password.length < 8) {
+        console.log("[REGISTER] Validation failed: password too short");
         return res.status(400).json({ message: "A jelszónak legalább 8 karakternek kell lennie." });
       }
 
       const existing = await authStorage.getUserByEmailWithPassword(email);
       if (existing) {
+        console.log("[REGISTER] User already exists:", email);
         return res.status(409).json({ message: "Ez az e-mail cím már regisztrálva van." });
       }
 
       const hashed = await hashPassword(password);
+      console.log("[REGISTER] Password hashed, creating user...");
       const user = await authStorage.createUser({
         email,
         password: hashed,
         firstName,
         lastName,
       });
+      console.log("[REGISTER] User created:", user.id, user.email);
 
       req.login({ claims: { sub: user.id } }, (err) => {
-        if (err) return next(err);
+        if (err) {
+          console.error("[REGISTER LOGIN ERROR]", err);
+          return next(err);
+        }
+        console.log("[REGISTER] Login session created, sending 200");
         res.json(user);
       });
     } catch (err) {
+      console.error("[REGISTER ERROR]", err);
       next(err);
     }
   });
 
   app.post("/api/login", (req, res, next) => {
+    console.log("[LOGIN] Request received:", req.method, req.path, req.body);
     passport.authenticate("local", (err: Error | null, user: any, info: { message?: string } | undefined) => {
-      if (err) return next(err);
+      if (err) {
+        console.error("[LOGIN PASSPORT ERROR]", err);
+        return next(err);
+      }
       if (!user) {
+        console.log("[LOGIN] Authentication failed:", info?.message || "unknown reason");
         return res.status(401).json({ message: info?.message || "Hibás e-mail vagy jelszó." });
       }
       req.login(user, async (loginErr) => {
-        if (loginErr) return next(loginErr);
+        if (loginErr) {
+          console.error("[LOGIN SESSION ERROR]", loginErr);
+          return next(loginErr);
+        }
+        console.log("[LOGIN] Session created for user:", user.claims?.sub);
         const fullUser = await authStorage.getUser(user.claims.sub);
+        console.log("[LOGIN] Sending 200 with user:", fullUser?.id, fullUser?.email);
         res.json(fullUser);
       });
     })(req, res, next);
