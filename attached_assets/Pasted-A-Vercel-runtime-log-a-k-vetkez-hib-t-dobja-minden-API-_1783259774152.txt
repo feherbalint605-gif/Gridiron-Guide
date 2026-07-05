@@ -1,0 +1,26 @@
+A Vercel runtime log a következő hibát dobja minden API hívásnál (login, register, auth/user):
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/var/task/server/app' imported from /var/task/api/index.js
+
+Ez azt jelenti, hogy az api/index.js fájl importálja a server/app modult, de az build után nem található a Vercel serverless function csomagban. Kérlek vizsgáld meg és javítsd az alábbiak szerint:
+
+1. ELLENŐRIZD AZ API/INDEX.JS IMPORT SORÁT
+- Nyisd meg az api/index.js fájlt, és nézd meg pontosan, hogyan importálja a server/app-ot (pl. "import app from '../server/app'").
+- ESM módban (amikor a package.json "type": "module") a relatív importoknál KÖTELEZŐ a fájlkiterjesztés (pl. '../server/app.js'), kiterjesztés nélkül nem old fel semmit. Ellenőrizd, hogy az import tartalmazza-e a helyes kiterjesztést a lefordított (JS) fájlra.
+
+2. ELLENŐRIZD, HOGY A SERVER/APP FÁJL TÉNYLEGESEN LÉTEZIK-E BUILD UTÁN
+- Nézd meg, hogy van-e egy server/app.ts (vagy .js) forrásfájl a projektben.
+- Ha TypeScript forrásfájlról van szó, ellenőrizd, hogy a build folyamat (script/build.mjs vagy tsc) lefordítja-e ezt külön fájlként a kimeneti (dist vagy build) mappába, és hogy az api/index.js a LEFORDÍTOTT elérési útra hivatkozik-e, nem a nyers TypeScript forrásra.
+- Ha a build folyamat mindent egyetlen bundle-be csomagol (pl. esbuild egyetlen kimeneti fájlba), akkor lehet, hogy a server/app-ra mutató import felesleges vagy hibás - ilyenkor az api/index.js-nek magát a bundle-t kellene importálnia/hívnia, nem egy külön "server/app" modult.
+
+3. ELLENŐRIZD A VERCEL FUNCTION INCLUDE BEÁLLÍTÁSOKAT
+- Nézd meg a vercel.json-t, van-e benne "functions" vagy "includeFiles" konfiguráció, ami meghatározza, mely fájlok kerüljenek be a serverless function csomagba.
+- Ha a server/ mappa fájljai nincsenek explicit módon hozzáadva ehhez a listához, és a build kimenet nem egy helyre teszi őket az api/ mappával, a Vercel nem fogja tudni becsomagolni ezeket a function mellé. Ha szükséges, adj hozzá egy "functions" szekciót a vercel.json-ban, ami biztosítja, hogy a server/ mappa lefordított kimenete bekerüljön a function bundle-be.
+
+4. EGYSÉGESÍTSD A BUILD KIMENETI STRUKTÚRÁT
+- A legrobusztusabb megoldás, ha az api/index.js és a hozzá tartozó teljes szerver logika (routes, app setup, stb.) EGYETLEN bundle-be van fordítva esbuild-del vagy hasonlóval, külső "server/app" import nélkül. Ha jelenleg a build script (script/build.mjs) külön fájlokra bontva generálja a szerver kódot, fontold meg, hogy egyetlen, önálló api/index.js bundle-t generáljon, ami minden szükséges szerver kódot (routes, middleware, app setup) tartalmaz, külső relatív import nélkül a server/ mappára.
+
+5. TESZTELÉS
+- A módosítás után futtasd le lokálisan a teljes build folyamatot, majd ellenőrizd, hogy a build kimeneti mappában (pl. .vercel/output vagy dist) az api/index.js melletti/importált fájlok ténylegesen léteznek-e a hivatkozott elérési úton.
+
+Kérlek a módosítás után írd le pontosan, hogyan néz ki most az api/index.js tartalma, és hogyan generálja a build script ezt a fájlt és a hozzá tartozó szerver kódot.
