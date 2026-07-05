@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm install esbuild vite && node script/build.mjs",
+  "buildCommand": "node script/build.mjs",
   "outputDirectory": "dist/public",
   "functions": {
     "api/index.ts": {

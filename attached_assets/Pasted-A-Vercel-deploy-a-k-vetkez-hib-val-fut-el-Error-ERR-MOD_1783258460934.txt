@@ -1,0 +1,28 @@
+A Vercel deploy a következő hibával fut el:
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'esbuild' imported from /vercel/path0/script/build.mjs
+Error: Command "npm install esbuild vite && node script/build.mjs" exited with 1
+
+A jelenlegi build folyamat hibás: a build command manuálisan próbálja telepíteni az esbuild-et és a vite-ot futásidőben ("npm install esbuild vite && ..."), ami nem megbízható megoldás Vercel-en. Kérlek javítsd az alábbiak szerint:
+
+1. ELLENŐRIZD A PACKAGE.JSON FÜGGŐSÉGEKET
+- Az esbuild és a vite csomagoknak a "dependencies" szekcióban kell szerepelniük a package.json-ban, NEM a "devDependencies"-ben, mert a Vercel build környezete alapból telepíti a dependencies-t, de a devDependencies telepítése beállítástól függ.
+- Ha jelenleg a devDependencies-ben vannak, mozgasd át őket a dependencies közé.
+
+2. TÁVOLÍTSD EL A KÉZI "npm install" HÍVÁST A BUILD SCRIPT-BŐL
+- A build parancs jelenleg ez: "npm install esbuild vite && node script/build.mjs"
+- Ez helytelen minta, mert a Vercel már lefuttatja a saját "npm install" lépését a build előtt. A build command-nak csak magát a build lépést kell tartalmaznia, pl.: "node script/build.mjs"
+- Ellenőrizd a package.json "scripts" szekcióját (pl. a "build" scriptet) és a vercel.json-t (ha van benne buildCommand override), és távolítsd el belőlük a felesleges, kézi install lépést.
+
+3. ELLENŐRIZD A script/build.mjs FÁJLT
+- Nézd meg, hogyan importálja az esbuild-et és a vite-ot (import vagy require), és győződj meg róla, hogy ez kompatibilis a package.json "type" mezőjével (module vagy commonjs).
+- Ha a build.mjs helyi (relatív) node_modules-ra hivatkozik valamilyen egyedi útvonalon, ellenőrizd, hogy ez a Vercel build környezetében (/vercel/path0) is helyesen felold-e.
+
+4. TISZTÁZD A VERCEL BUILD KONFIGURÁCIÓT
+- Ellenőrizd a vercel.json-t (ha van), hogy a "buildCommand" és "installCommand" mezők helyesen vannak-e beállítva, és nincs bennük redundáns vagy egymásnak ellentmondó parancs.
+- Ha nincs is vercel.json buildCommand override, akkor a package.json "build" scriptjét kell javítani, mert azt futtatja a Vercel alapból.
+
+5. TESZTELÉS
+- Miután módosítottad, futtasd le lokálisan is a "npm install" majd a build parancsot tiszta node_modules-szal (töröld a node_modules mappát és telepítsd újra), hogy megbizonyosodj róla, a build önállóan, kézi beavatkozás nélkül is lefut.
+
+Kérlek a módosítások után foglald össze, mit változtattál a package.json-ban és a build scriptekben

@@ -1,22 +1,6 @@
-import { execSync } from "node:child_process";
+import { build as esbuild } from "esbuild";
+import { build as viteBuild } from "vite";
 import { rm, readFile } from "node:fs/promises";
-
-// Ensure esbuild and vite are available before importing them.
-// Vercel skips devDependencies, so we install them on-the-fly here.
-function ensurePackage(name) {
-  try {
-    require.resolve(name);
-  } catch {
-    console.log(`Installing ${name}...`);
-    execSync(`npm install --no-save ${name}`, { stdio: "inherit" });
-  }
-}
-
-ensurePackage("esbuild");
-ensurePackage("vite");
-
-const { build: esbuild } = await import("esbuild");
-const { build: viteBuild } = await import("vite");
 
 const allowlist = [
   "@google/generative-ai",
