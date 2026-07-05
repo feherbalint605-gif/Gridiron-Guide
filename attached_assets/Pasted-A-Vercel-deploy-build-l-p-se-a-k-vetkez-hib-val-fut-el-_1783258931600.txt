@@ -1,0 +1,23 @@
+A Vercel deploy build lépése a következő hibával fut el:
+
+npm error network request to http://package-firewall.replit.local/npm/vite/-/vite-7.3.6.tgz failed, reason: getaddrinfo ENOTFOUND package-firewall.replit.local
+
+Ez azt jelenti, hogy az npm egy Replit-specifikus belső proxy-n (package-firewall.replit.local) keresztül próbálja letölteni a csomagokat, ami Vercel környezetben nem elérhető. Kérlek javítsd az alábbiak szerint:
+
+1. .NPMRC FÁJL ELLENŐRZÉSE ÉS JAVÍTÁSA
+- Keresd meg a projekt gyökerében (és esetleg a home könyvtárban is) a .npmrc fájlt.
+- Ha van benne "registry=..." sor, ami a package-firewall.replit.local-ra vagy bármilyen más Replit-belső címre mutat, töröld azt a sort, vagy cseréld le a hivatalos npm registry-re: registry=https://registry.npmjs.org/
+- Ha az egész .npmrc fájl csak Replit-specifikus beállításokat tartalmaz, törölhető is teljesen.
+
+2. PACKAGE-LOCK.JSON ELLENŐRZÉSE
+- Nézd át a package-lock.json-t, hogy tartalmaz-e "resolved" mezőkben package-firewall.replit.local vagy más Replit-belső URL-t.
+- Ha igen, töröld a package-lock.json-t és a node_modules mappát, majd generáld újra tiszta telepítéssel (npm install) úgy, hogy közben a fenti javított .npmrc (vagy annak hiánya) legyen érvényben, hogy a lock fájl a hivatalos registry URL-jeit tartalmazza.
+
+3. KÖRNYEZETI VÁLTOZÓK ELLENŐRZÉSE
+- Ellenőrizd, nincs-e valahol (pl. .replit, replit.nix, vagy környezeti változóként beállítva) NPM_CONFIG_REGISTRY vagy hasonló változó, ami felülírja a registry címet Replit-belső URL-re.
+
+4. VÉGELLENŐRZÉS
+- A javítás után a package-lock.json-ban és a .npmrc-ben (ha megmarad) kizárólag https://registry.npmjs.org/ vagy semmilyen egyedi registry beállítás ne szerepeljen.
+- Commitold a javított package-lock.json-t is, ne csak a .npmrc-t, különben a Vercel build a régi, hibás lock fájlat fogja használni.
+
+Kérlek a módosítás után foglald össze, mely fájlokban mit változtattál, és erősítsd meg, hogy a package-lock.json már nem tartalmaz Replit-specifikus registry URL-t.
