@@ -1,4 +1,4 @@
-import { createApp } from "../server/app";
+import { createApp } from "./app";
 import type { Express } from "express";
 
 // Vercel serverless entry point. Builds the Express app once per cold start
