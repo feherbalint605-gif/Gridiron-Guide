@@ -1,0 +1,21 @@
+Megtaláltuk a gyökérproblémát! A böngésző Network fülén látszik, hogy a POST /api/register kérés 405 Method Not Allowed hibát kap, és a válasz Content-Disposition header-je "filename=index.html" - vagyis a kérést a statikus index.html fájl szolgálja ki, NEM az api/index.cjs serverless function. Ez azért van, mert egy statikus HTML fájl nem fogad POST kérést.
+
+Ez azt jelenti, hogy a vercel.json "rewrites" szabályai rosszul vannak sorba rendezve vagy hiányos a konfiguráció: a frontend SPA catch-all szabálya (ami minden nem talált útvonalat az index.html-re irányít, hogy a React Router kezelhesse) ELŐBB illeszkedik, mint az /api/* útvonalakat a serverless function-höz irányító szabály - vagy egyáltalán nincs is explicit API rewrite szabály.
+
+Kérlek javítsd az alábbiak szerint:
+
+1. ÍRD KI A JELENLEGI VERCEL.JSON TELJES TARTALMÁT
+- Mutasd meg pontosan, mi van most a "rewrites" (és "routes", ha van ilyen is) szekcióban.
+
+2. JAVÍTSD A REWRITES SORRENDJÉT/SZABÁLYAIT
+- A helyes sorrend: ELŐSZÖR kell szerepelnie egy explicit szabálynak, ami az "/api/(.*)" mintát a megfelelő function-höz irányítja (pl. { "source": "/api/(.*)", "destination": "/api/index.cjs" } vagy hasonló, a bundle fájlnevének megfelelően).
+- CSAK EZUTÁN jöhet a SPA catch-all szabály, ami mindent mást (ami nem /api alá esik) az index.html-re irányít (pl. { "source": "/((?!api/).*)", "destination": "/index.html" } - a negatív lookahead kizárja az /api útvonalakat a catch-all-ból).
+- Ha jelenleg a catch-all szabály egyszerűen "/(.*)" mintát használ /api kizárása nélkül, ez pontosan megmagyarázza a hibát - ezt javítsd negatív lookahead-del vagy explicit sorrenddel.
+
+3. ELLENŐRIZD A FUNCTION FÁJLNÉV EGYEZÉST
+- Győződj meg róla, hogy a rewrites-ben szereplő destination pontosan egyezik a build által generált api/index.cjs fájlnévvel és elérési úttal.
+
+4. TESZTELÉS
+- A módosítás után írd le pontosan az új vercel.json tartalmát, hogy leellenőrizhessük a szabályok helyességét és sorrendjét, mielőtt újra deployolnánk.
+
+Ez valószínűleg megoldja végre a regisztráció/bejelentkezés problémáját, mert eddig a kérések soha nem jutottak el a backend kódig.
