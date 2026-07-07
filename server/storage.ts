@@ -7,7 +7,7 @@ export interface IStorage {
   getPositionDetails(id: string): Promise<PositionDetails | undefined>;
   updatePositionDetails(id: string, details: PositionDetails): Promise<void>;
   // Workout Logs
-  getWorkoutLogs(userId: number, positionId: string): Promise<WorkoutLog[]>;
+  getWorkoutLogs(userId: string, positionId: string): Promise<WorkoutLog[]>;
   saveWorkoutLog(log: InsertWorkoutLog): Promise<WorkoutLog>;
 }
 
@@ -25,7 +25,7 @@ export class DatabaseStorage implements IStorage {
     await db.update(positionsTable).set({ details }).where(eq(positionsTable.id, id));
   }
 
-  async getWorkoutLogs(userId: number, positionId: string): Promise<WorkoutLog[]> {
+  async getWorkoutLogs(userId: string, positionId: string): Promise<WorkoutLog[]> {
     console.log("Fetching logs for userId:", userId, "positionId:", positionId);
     const result = await db.select().from(workoutLogs).where(
       and(
