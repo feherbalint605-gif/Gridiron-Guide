@@ -207,9 +207,8 @@ export async function registerRoutes(
     if (!athlete) return res.status(403).json({ message: "Athlete not found" });
 
     // athlete's numeric user id for workout_logs table
-    const numericId = parseInt(String(athleteId).replace(/\D/g, "")) || 0;
     const logs = await db.select().from(workoutLogs).where(
-      and(eq(workoutLogs.userId, numericId), eq(workoutLogs.positionId, positionId))
+      and(eq(workoutLogs.userId, athleteId), eq(workoutLogs.positionId, positionId))
     );
     res.json(logs);
   });
@@ -344,12 +343,10 @@ export async function registerRoutes(
   app.get("/api/workout-logs/:positionId", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const user = req.user as any;
-    const userId = user.id || user.claims?.sub || "999";
+    const userId = user.id || user.claims?.sub;
+    if (!userId) return res.sendStatus(401);
     
-    // Ensure numeric ID for database
-    const dbUserId = typeof userId === 'number' ? userId : parseInt(String(userId).replace(/\D/g, '')) || 999;
-    
-    const logs = await storage.getWorkoutLogs(dbUserId, req.params.positionId);
+    const logs = await storage.getWorkoutLogs(userId, req.params.positionId);
     res.json(logs);
   });
 
@@ -360,11 +357,12 @@ export async function registerRoutes(
     }
     try {
       const user = req.user as any;
-      const userId = user.id || user.claims?.sub || "999";
+      const userId = user.id || user.claims?.sub;
+      if (!userId) return res.status(401).json({ message: "Jelentkezz be a mentéshez!" });
       
       const logData = {
         ...req.body,
-        userId: typeof userId === 'number' ? userId : parseInt(String(userId).replace(/\D/g, '')) || 999,
+        userId: userId,
         week: parseInt(req.body.week),
         setIndex: parseInt(req.body.setIndex),
         weight: parseInt(req.body.weight) || 0,
