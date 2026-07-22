@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from "react";
+import i18n from "@/i18n";
+import { useTranslation } from "react-i18next";
 import { useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -23,14 +25,14 @@ interface Msg {
 }
 
 function memberName(m: { firstName: string | null; lastName: string | null; email: string | null }) {
-  return [m.firstName, m.lastName].filter(Boolean).join(" ") || m.email || "Játékos";
+  return [m.firstName, m.lastName].filter(Boolean).join(" ") || m.email || i18n.t("chat:player");
 }
 
 function authorLabel(authorId: string, team: TeamInfo | undefined): string {
-  if (!team) return "Ismeretlen";
-  if (authorId === team.coachId) return "Edző";
+  if (!team) return i18n.t("chat:unknown");
+  if (authorId === team.coachId) return i18n.t("chat:coach");
   const m = team.members.find(x => x.id === authorId);
-  return m ? memberName(m) : "Ismeretlen";
+  return m ? memberName(m) : i18n.t("chat:unknown");
 }
 
 function Avatar({ name }: { name: string }) {
@@ -48,6 +50,7 @@ interface Props {
 }
 
 export default function TeamChat({ teamIdOverride, onBack }: Props = {}) {
+  const { t } = useTranslation();
   const params = useParams<{ id: string }>();
   const teamId = teamIdOverride ?? parseInt(params?.id || "0");
   const { user } = useAuth();
@@ -59,7 +62,7 @@ export default function TeamChat({ teamIdOverride, onBack }: Props = {}) {
     queryKey: ["/api/team", teamId],
     queryFn: async () => {
       const res = await fetch(`/api/team/${teamId}`);
-      if (!res.ok) throw new Error("Nem található");
+      if (!res.ok) throw new Error(i18n.t("chat:notFound"));
       return res.json();
     },
     enabled: !!teamId,
@@ -69,7 +72,7 @@ export default function TeamChat({ teamIdOverride, onBack }: Props = {}) {
     queryKey: ["/api/team/messages", teamId],
     queryFn: async () => {
       const res = await fetch(`/api/team/${teamId}/messages`);
-      if (!res.ok) throw new Error("Nem sikerült betölteni");
+      if (!res.ok) throw new Error(i18n.t("chat:loadError"));
       return res.json();
     },
     enabled: !!teamId,
@@ -122,12 +125,12 @@ export default function TeamChat({ teamIdOverride, onBack }: Props = {}) {
         <BackButton />
         <div className="flex items-center gap-2 flex-1">
           <MessageSquare className="w-4 h-4 text-primary" />
-          <span className="font-bold text-foreground">{team?.name ?? "Csapat üzenőfal"}</span>
+          <span className="font-bold text-foreground">{team?.name ?? t("chat:teamWallTitle")}</span>
         </div>
         {team && (
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Users className="w-3.5 h-3.5" />
-            <span>{team.members.length} tag</span>
+            <span>{t("chat:memberCount", { count: team.members.length })}</span>
           </div>
         )}
       </header>
@@ -136,7 +139,7 @@ export default function TeamChat({ teamIdOverride, onBack }: Props = {}) {
         <div className="flex gap-1.5 px-4 py-2 border-b border-border/30 overflow-x-auto shrink-0 bg-card/10">
           <div className="flex items-center gap-1 bg-primary/10 border border-primary/20 rounded-full px-2 py-0.5">
             <div className="w-4 h-4 rounded-full bg-primary/20 flex items-center justify-center text-[8px] font-bold text-primary">E</div>
-            <span className="text-[10px] text-primary whitespace-nowrap font-bold">Edző</span>
+            <span className="text-[10px] text-primary whitespace-nowrap font-bold">{t("chat:coach")}</span>
           </div>
           {team.members.map(m => (
             <div key={m.id} className="flex items-center gap-1 bg-black/30 rounded-full px-2 py-0.5">
@@ -158,7 +161,7 @@ export default function TeamChat({ teamIdOverride, onBack }: Props = {}) {
         {!isLoading && messages.length === 0 && (
           <div className="text-center py-16 text-muted-foreground">
             <MessageSquare className="w-10 h-10 mx-auto mb-2 opacity-20" />
-            <p className="text-sm">Még nincs üzenet. Legyél az első!</p>
+            <p className="text-sm">{t("chat:noMessages")}</p>
           </div>
         )}
         {messages.map(msg => {
@@ -200,7 +203,7 @@ export default function TeamChat({ teamIdOverride, onBack }: Props = {}) {
             value={draft}
             onChange={e => setDraft(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-            placeholder="Írj üzenetet... (Enter = küldés)"
+            placeholder={t("chat:messagePlaceholder")}
             rows={1}
             data-testid="input-message"
             className="flex-1 bg-black/30 border border-border/50 rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:border-primary/50 min-h-[40px]"

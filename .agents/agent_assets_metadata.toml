@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "WP35OMYc4U4xWjXVaQBMS"
+uri = "file://screenshots/login-root.jpg"
+type = "image"
+title = "Login page with language switcher"

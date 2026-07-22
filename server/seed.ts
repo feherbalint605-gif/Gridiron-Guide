@@ -1,7 +1,7 @@
 import { db } from "./db";
 import { positions } from "@shared/schema";
 
-const positionData = [
+const positionData: Array<typeof positions.$inferInsert> = [
   {
     id: "qb",
     name: "Quarterback",

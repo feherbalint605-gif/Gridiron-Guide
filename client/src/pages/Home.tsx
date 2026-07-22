@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { usePositions } from "@/hooks/use-positions";
@@ -43,6 +45,7 @@ const positionIcons: Record<string, any> = {
 };
 
 function PositionSelector({ onSelect }: { onSelect: (id: string) => void }) {
+  const { t } = useTranslation();
   const { data: positions, isLoading } = usePositions();
 
   return (
@@ -51,13 +54,13 @@ function PositionSelector({ onSelect }: { onSelect: (id: string) => void }) {
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary border border-primary/20 font-mono text-xs tracking-widest uppercase">
             <Trophy className="w-3.5 h-3.5" />
-            <span>Athlete Dashboard</span>
+            <span>{t("dashboard:athleteDashboardTitle")}</span>
           </div>
           <h1 className="text-4xl font-display font-black text-transparent bg-clip-text bg-gradient-to-br from-white via-white to-gray-500 tracking-tighter mt-4">
             GRIDIRON<br />
             <span className="text-primary italic">TRAINING</span>
           </h1>
-          <p className="text-sm text-muted-foreground mt-2">Válaszd ki a pályán elfoglalt pozíciódat</p>
+          <p className="text-sm text-muted-foreground mt-2">{t("dashboard:selectPositionSubtitle")}</p>
         </div>
 
         {isLoading ? (
@@ -67,14 +70,14 @@ function PositionSelector({ onSelect }: { onSelect: (id: string) => void }) {
             <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-accent/20 rounded-lg blur opacity-25 group-hover:opacity-50 transition duration-500" />
             <div className="relative">
               <label className="block text-[10px] font-mono text-primary uppercase tracking-[0.3em] mb-3 opacity-80">
-                Pozíció kiválasztása
+                {t("dashboard:selectPositionLabel")}
               </label>
               <Select onValueChange={onSelect}>
                 <SelectTrigger
                   className="w-full bg-black/50 backdrop-blur-xl border-primary/30 h-14 text-lg focus:ring-primary/50 rounded-none border-t-0 border-x-0 border-b-2 transition-all hover:border-primary"
                   data-testid="select-position"
                 >
-                  <SelectValue placeholder="POZÍCIÓ VÁLASZTÁSA" />
+                  <SelectValue placeholder={t("dashboard:selectPositionPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent className="bg-black/90 backdrop-blur-2xl border-primary/20 rounded-none">
                   {positions?.map((pos) => {
@@ -105,48 +108,48 @@ function PositionSelector({ onSelect }: { onSelect: (id: string) => void }) {
 const dashboardCards = [
   {
     id: "training",
-    title: "Edzésterv",
-    subtitle: "Heti workout & diéta terv",
+    title: i18n.t("dashboard:trainingPlan"),
+    subtitle: i18n.t("dashboard:trainingPlanSubtitle"),
     icon: Dumbbell,
     href: (posId: string) => `/position/${posId}`,
     accent: "from-primary/20 to-primary/5",
     border: "border-primary/30 hover:border-primary/60",
     iconColor: "text-primary",
-    badge: "Terv",
+    badge: i18n.t("dashboard:planBadge"),
   },
   {
     id: "playbook",
-    title: "Playbook",
-    subtitle: "Az edző által feltöltött playek",
+    title: i18n.t("dashboard:playbook"),
+    subtitle: i18n.t("dashboard:playbookSubtitle"),
     icon: BookOpen,
     href: () => "/playbook",
     accent: "from-cyan-500/20 to-cyan-500/5",
     border: "border-cyan-500/30 hover:border-cyan-500/60",
     iconColor: "text-cyan-400",
-    badge: "Taktika",
+    badge: i18n.t("dashboard:tacticsBadge"),
   },
   {
     id: "film",
-    title: "Film",
-    subtitle: "Videóelemzés és felvételek",
+    title: i18n.t("dashboard:film"),
+    subtitle: i18n.t("dashboard:filmSubtitle"),
     icon: Video,
     href: () => "/film",
     accent: "from-purple-500/20 to-purple-500/5",
     border: "border-purple-500/30 hover:border-purple-500/60",
     iconColor: "text-purple-400",
-    badge: "Hamarosan",
+    badge: i18n.t("dashboard:comingSoon"),
     disabled: true,
   },
   {
     id: "study",
-    title: "Study",
-    subtitle: "Tananyagok és kvízek",
+    title: i18n.t("dashboard:study"),
+    subtitle: i18n.t("dashboard:studySubtitle"),
     icon: GraduationCap,
     href: () => "/study",
     accent: "from-amber-500/20 to-amber-500/5",
     border: "border-amber-500/30 hover:border-amber-500/60",
     iconColor: "text-amber-400",
-    badge: "Hamarosan",
+    badge: i18n.t("dashboard:comingSoon"),
     disabled: true,
   },
 ];
@@ -164,6 +167,7 @@ function AthleteDashboard({
   positionId: string;
   onChangePosition: () => void;
 }) {
+  const { t } = useTranslation();
   const { data: position } = usePosition(positionId);
   const { data: myTeam } = useQuery<MyTeam | null>({
     queryKey: ["/api/my-team"],
@@ -191,15 +195,15 @@ function AthleteDashboard({
           className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors font-mono"
         >
           <RefreshCw className="w-3 h-3" />
-          Pozíció váltás
+          {t("dashboard:changePosition")}
         </button>
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
         <div>
-          <h2 className="text-xs font-mono text-primary/60 uppercase tracking-widest mb-1">Dashboard</h2>
+          <h2 className="text-xs font-mono text-primary/60 uppercase tracking-widest mb-1">{t("dashboard:dashboardLabel")}</h2>
           <h1 className="text-2xl font-display font-black text-foreground tracking-tight">
-            Üdvözöljük,{" "}
+            {t("dashboard:welcome")}{" "}
             <span className="text-primary">
               {position?.name ?? positionId.toUpperCase()}
             </span>
@@ -261,7 +265,7 @@ function AthleteDashboard({
                   <MessageSquare className="w-5 h-5" />
                 </div>
                 <span className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground border border-border/50 rounded px-1.5 py-0.5">
-                  Csapat
+                  {t("dashboard:teamBadge")}
                 </span>
               </div>
               <h3 className="font-display font-bold text-foreground text-base tracking-wide mb-0.5">
@@ -269,7 +273,7 @@ function AthleteDashboard({
               </h3>
               <p className="text-xs text-muted-foreground leading-relaxed flex items-center gap-1.5">
                 <Users className="w-3 h-3" />
-                {myTeam.members.length} csapattag · Üzenőfal
+                {t("dashboard:teamMembers", { count: myTeam.members.length })}
               </p>
               <ChevronRight className="absolute bottom-4 right-4 w-4 h-4 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
             </div>
@@ -281,6 +285,7 @@ function AthleteDashboard({
 }
 
 export default function Home() {
+  const { t } = useTranslation();
   const { user, isLoading } = useAuth();
   const [changingPosition, setChangingPosition] = useState(false);
 

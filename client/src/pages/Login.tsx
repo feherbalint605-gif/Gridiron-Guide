@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { useTranslation } from "react-i18next";
 import { useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -11,6 +13,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 type Mode = "login" | "register";
 
 export default function Login() {
+  const { t } = useTranslation();
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -40,7 +43,7 @@ export default function Login() {
         // not JSON, use raw message
       }
       toast({
-        title: mode === "login" ? "Sikertelen bejelentkezés" : "Sikertelen regisztráció",
+        title: mode === "login" ? t("auth:loginFailed") : t("auth:registerFailed"),
         description: text,
         variant: "destructive",
       });
@@ -54,6 +57,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 dark">
+        <div className="fixed top-4 right-4 z-50"><LanguageSwitcher /></div>
       <div className="max-w-md w-full">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -64,7 +68,7 @@ export default function Login() {
             GRIDIRON TRAINING
           </h1>
           <p className="text-muted-foreground text-sm uppercase tracking-widest">
-            {mode === "login" ? "Jelentkezz be a fiókodba" : "Hozz létre egy fiókot"}
+            {mode === "login" ? t("auth:loginSubtitle") : t("auth:registerSubtitle")}
           </p>
         </motion.div>
 
@@ -78,7 +82,7 @@ export default function Login() {
                 mode === "login" ? "bg-primary text-black" : "text-muted-foreground"
               }`}
             >
-              Bejelentkezés
+              {t("auth:login")}
             </button>
             <button
               type="button"
@@ -88,7 +92,7 @@ export default function Login() {
                 mode === "register" ? "bg-primary text-black" : "text-muted-foreground"
               }`}
             >
-              Regisztráció
+              {t("auth:register")}
             </button>
           </div>
 
@@ -104,30 +108,30 @@ export default function Login() {
               {mode === "register" && (
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="firstName">Keresztnév</Label>
+                    <Label htmlFor="firstName">{t("auth:firstName")}</Label>
                     <Input
                       id="firstName"
                       data-testid="input-first-name"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
-                      placeholder="János"
+                      placeholder={t("auth:placeholderFirstName")}
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="lastName">Vezetéknév</Label>
+                    <Label htmlFor="lastName">{t("auth:lastName")}</Label>
                     <Input
                       id="lastName"
                       data-testid="input-last-name"
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
-                      placeholder="Kovács"
+                      placeholder={t("auth:placeholderLastName")}
                     />
                   </div>
                 </div>
               )}
 
               <div className="space-y-1.5">
-                <Label htmlFor="email">E-mail</Label>
+                <Label htmlFor="email">{t("auth:email")}</Label>
                 <Input
                   id="email"
                   data-testid="input-email"
@@ -136,12 +140,12 @@ export default function Login() {
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="nev@example.com"
+                  placeholder={t("auth:placeholderEmail")}
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="password">Jelszó</Label>
+                <Label htmlFor="password">{t("auth:password")}</Label>
                 <Input
                   id="password"
                   data-testid="input-password"
@@ -154,7 +158,7 @@ export default function Login() {
                   placeholder="••••••••"
                 />
                 {mode === "register" && (
-                  <p className="text-xs text-muted-foreground">Legalább 8 karakter</p>
+                  <p className="text-xs text-muted-foreground">{t("auth:passwordHint")}</p>
                 )}
               </div>
 
@@ -165,10 +169,10 @@ export default function Login() {
                 disabled={authMutation.isPending}
               >
                 {authMutation.isPending
-                  ? "Folyamatban..."
+                  ? t("common:loading")
                   : mode === "login"
-                  ? "BEJELENTKEZÉS"
-                  : "REGISZTRÁCIÓ"}
+                  ? t("auth:signIn")
+                  : t("auth:signUp")}
               </Button>
             </motion.form>
           </AnimatePresence>

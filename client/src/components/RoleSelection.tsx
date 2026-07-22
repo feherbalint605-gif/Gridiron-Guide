@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { NeonCard } from "@/components/NeonCard";
 import { motion } from "framer-motion";
@@ -7,6 +8,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 
 export default function RoleSelection({ onSelect }: { onSelect: (role: string) => void }) {
+  const { t } = useTranslation();
   const [isUpdating, setIsUpdating] = useState(false);
 
   const handleSelect = async (role: string) => {
@@ -32,10 +34,10 @@ export default function RoleSelection({ onSelect }: { onSelect: (role: string) =
           className="text-center mb-12"
         >
           <h1 className="text-4xl md:text-6xl font-display font-black text-primary mb-4 italic">
-            CHOOSE YOUR PATH
+            {t("auth:chooseYourPath")}
           </h1>
           <p className="text-muted-foreground text-lg uppercase tracking-widest">
-            Select your role to access the gridiron
+            {t("auth:chooseRoleSubtitle")}
           </p>
         </motion.div>
 
@@ -50,11 +52,11 @@ export default function RoleSelection({ onSelect }: { onSelect: (role: string) =
                 <User className="w-10 h-10 text-primary" />
               </div>
               <div className="text-center">
-                <h2 className="text-2xl font-bold text-white mb-2 uppercase tracking-tighter">Athlete</h2>
-                <p className="text-muted-foreground text-sm">Access training protocols, diet plans, and track your progress.</p>
+                <h2 className="text-2xl font-bold text-white mb-2 uppercase tracking-tighter">{t("auth:athlete")}</h2>
+                <p className="text-muted-foreground text-sm">{t("auth:athleteDescription")}</p>
               </div>
               <Button className="w-full bg-primary text-black font-bold hover:bg-primary/80" disabled={isUpdating}>
-                SELECT ATHLETE
+                {t("auth:selectAthlete")}
               </Button>
             </NeonCard>
           </motion.div>
@@ -69,11 +71,11 @@ export default function RoleSelection({ onSelect }: { onSelect: (role: string) =
                 <ShieldCheck className="w-10 h-10 text-accent" />
               </div>
               <div className="text-center">
-                <h2 className="text-2xl font-bold text-white mb-2 uppercase tracking-tighter">Coach</h2>
-                <p className="text-muted-foreground text-sm">Manage roster, review athlete progress, and update protocols.</p>
+                <h2 className="text-2xl font-bold text-white mb-2 uppercase tracking-tighter">{t("auth:coach")}</h2>
+                <p className="text-muted-foreground text-sm">{t("auth:coachDescription")}</p>
               </div>
               <Button variant="outline" className="w-full border-accent text-accent hover:bg-accent hover:text-black font-bold" disabled={isUpdating}>
-                SELECT COACH
+                {t("auth:selectCoach")}
               </Button>
             </NeonCard>
           </motion.div>

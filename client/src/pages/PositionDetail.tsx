@@ -1,4 +1,5 @@
 import { useParams, Link } from "wouter";
+import { useTranslation } from "react-i18next";
 import { usePosition } from "@/hooks/use-positions";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Dumbbell, Utensils, Zap, Shield, Video, Plus, History, Save, MessageSquare } from "lucide-react";
@@ -13,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 
 export default function PositionDetail() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const { data: position, isLoading } = usePosition(id || "");
   const [activeTab, setActiveTab] = useState<"gym" | "field" | "diet" | "film" | "tracking">("gym");
@@ -45,19 +47,19 @@ export default function PositionDetail() {
         const res = await apiRequest("POST", "/api/workout-logs", newLog);
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data.message || "Failed to save");
+          throw new Error(data.message || t("common:saveError"));
         }
         return data;
       },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: [`/api/workout-logs/${id}`] });
-        toast({ title: "Haladás mentve!", description: "A fejlődésed rögzítettük." });
+        toast({ title: t("weight:progressSaved"), description: t("weight:progressSavedDescription") });
       },
       onError: (error: any) => {
         console.error("Mutation error:", error);
         toast({ 
-          title: "Hiba a mentésnél", 
-          description: error.message || "Nem sikerült elmenteni az adatokat. Kérlek próbáld újra.",
+          title: t("common:saveErrorTitle"), 
+          description: error.message || t("common:saveErrorDescription"),
           variant: "destructive"
         });
       }
@@ -74,9 +76,9 @@ export default function PositionDetail() {
   if (!position) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center text-center p-4">
-        <h1 className="text-2xl text-destructive font-display mb-4">POSITION NOT FOUND</h1>
+        <h1 className="text-2xl text-destructive font-display mb-4">{t("common:positionNotFound")}</h1>
         <Link href="/" className="px-6 py-2 bg-secondary text-foreground rounded hover:bg-secondary/80">
-          Return to Base
+          {t("common:returnToBase")}
         </Link>
       </div>
     );
@@ -89,7 +91,7 @@ export default function PositionDetail() {
         <div className="container mx-auto max-w-6xl px-4 h-20 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors group">
             <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-            <span className="font-mono text-sm hidden sm:block">SELECT POSITION</span>
+            <span className="font-mono text-sm hidden sm:block">{t("dashboard:selectPosition")}</span>
           </Link>
           
           <h1 className="text-2xl md:text-4xl font-display font-bold text-center text-foreground uppercase tracking-widest">
@@ -104,7 +106,7 @@ export default function PositionDetail() {
         
         {/* Role Info */}
         <div className="mb-10 bg-gradient-to-r from-primary/5 to-transparent border-l-4 border-primary p-6 rounded-r-lg">
-          <h2 className="text-sm font-mono text-primary mb-2 uppercase tracking-wider">Mission Objective</h2>
+          <h2 className="text-sm font-mono text-primary mb-2 uppercase tracking-wider">{t("dashboard:missionObjective")}</h2>
           <p className="text-lg text-foreground/90 max-w-3xl leading-relaxed">
             {position.roleInfo}
           </p>
@@ -117,35 +119,35 @@ export default function PositionDetail() {
             onClick={() => setActiveTab("gym")}
             icon={<Shield className="w-4 h-4" />}
           >
-            Gym & Plyo
+            {t("weight:gymPlyo")}
           </TabButton>
           <TabButton 
             active={activeTab === "field"} 
             onClick={() => setActiveTab("field")}
             icon={<Zap className="w-4 h-4" />}
           >
-            Speed & Field
+            {t("weight:speedField")}
           </TabButton>
           <TabButton 
             active={activeTab === "diet"} 
             onClick={() => setActiveTab("diet")}
             icon={<Utensils className="w-4 h-4" />}
           >
-            Fuel & Nutrition
+            {t("weight:fuelNutrition")}
           </TabButton>
           <TabButton 
             active={activeTab === "film"} 
             onClick={() => setActiveTab("film")}
             icon={<Video className="w-4 h-4" />}
           >
-            Film & Study
+            {t("weight:filmStudy")}
           </TabButton>
           <TabButton 
             active={activeTab === "tracking"} 
             onClick={() => setActiveTab("tracking")}
             icon={<History className="w-4 h-4" />}
           >
-            Weight Tracking
+            {t("weight:weightTracking")}
           </TabButton>
         </div>
 
@@ -186,17 +188,17 @@ export default function PositionDetail() {
                   {/* Protein Target Card */}
                   <div className="w-full md:w-80 shrink-0">
                     <div className="bg-gradient-to-b from-card to-background border border-primary/20 rounded-xl p-6 text-center neon-border">
-                      <h3 className="text-muted-foreground text-sm uppercase font-bold mb-4">Daily Protein Target</h3>
+                      <h3 className="text-muted-foreground text-sm uppercase font-bold mb-4">{t("dashboard:dailyProteinTarget")}</h3>
                       <div className="text-5xl font-display font-bold text-primary mb-2 text-glow">
                         {position.diet.proteinTarget}
                       </div>
-                      <p className="text-sm text-foreground/60 mb-6">Grams per day</p>
+                      <p className="text-sm text-foreground/60 mb-6">{t("dashboard:gramsPerDay")}</p>
                       
                       <div className="h-1 w-full bg-secondary rounded-full overflow-hidden">
                         <div className="h-full bg-primary w-3/4 rounded-full" />
                       </div>
                       <p className="mt-4 text-xs text-muted-foreground">
-                        Consistent intake is crucial for muscle recovery and growth.
+                        {t("dashboard:proteinConsistency")}
                       </p>
                     </div>
                   </div>
@@ -207,10 +209,9 @@ export default function PositionDetail() {
             {activeTab === "film" && (
               <div className="min-h-[400px] flex flex-col items-center justify-center text-center p-8 bg-card/20 rounded-2xl border border-dashed border-primary/20">
                 <Video className="w-16 h-16 text-primary/20 mb-4" />
-                <h3 className="text-xl font-display font-bold text-foreground mb-2">FILM & STUDY ROOM</h3>
+                <h3 className="text-xl font-display font-bold text-foreground mb-2">{t("weight:filmStudyRoomTitle")}</h3>
                 <p className="text-muted-foreground max-w-md">
-                  This section is currently being prepared by the coaching staff. 
-                  Check back soon for game film analysis and tactical playbooks.
+                  {t("weight:filmStudyDescription")}
                 </p>
               </div>
             )}
@@ -218,9 +219,9 @@ export default function PositionDetail() {
             {activeTab === "tracking" && (
               <div className="space-y-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-display font-bold text-primary">Progress Tracking</h3>
+                  <h3 className="text-xl font-display font-bold text-primary">{t("weight:progressTracking")}</h3>
                   <div className="flex items-center gap-4 bg-card p-2 rounded-lg border border-border">
-                    <span className="text-sm font-mono uppercase text-muted-foreground">Week:</span>
+                    <span className="text-sm font-mono uppercase text-muted-foreground">{t("weight:weekLabel")}</span>
                     {[1, 2, 3, 4, 5, 6].map(w => (
                       <button
                         key={w}
@@ -252,7 +253,7 @@ export default function PositionDetail() {
                               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
                                 <div className="md:col-span-1">
                                   <p className="font-bold text-foreground">{ex.name}</p>
-                                  <p className="text-xs text-muted-foreground">{ex.sets} sets x {ex.reps} reps</p>
+                                  <p className="text-xs text-muted-foreground">{t("weight:setsReps", { sets: ex.sets, reps: ex.reps })}</p>
                                 </div>
                                 <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
                                   {Array.from({ length: parseInt(ex.sets) || 1 }).map((_, sIdx) => {
@@ -264,12 +265,12 @@ export default function PositionDetail() {
                                     );
                                     return (
                                       <div key={`${selectedWeek}-${sIdx}`} className="flex gap-2 items-center bg-black/20 p-2 rounded-lg border border-border/30">
-                                        <span className="text-[10px] font-mono text-muted-foreground w-8">SET {sIdx + 1}</span>
+                                        <span className="text-[10px] font-mono text-muted-foreground w-8">{t("weight:setLabel", { n: sIdx + 1 })}</span>
                                         <div className="relative flex-1">
                                           <Input
                                             key={`weight-${selectedWeek}-${sIdx}-${log?.id || 'new'}`}
                                             type="number"
-                                            placeholder="lbs"
+                                            placeholder={t("weight:lbsPlaceholder")}
                                             defaultValue={log?.weight ?? ""}
                                             className="bg-black/50 border-primary/20 h-8 text-xs focus:border-primary pr-6"
                                             onBlur={(e) => {
@@ -293,7 +294,7 @@ export default function PositionDetail() {
                                           <Input
                                             key={`reps-${selectedWeek}-${sIdx}-${log?.id || 'new'}`}
                                             type="number"
-                                            placeholder="reps"
+                                            placeholder={t("weight:repsPlaceholder")}
                                             defaultValue={log?.reps ?? ""}
                                             className="bg-black/50 border-accent/20 h-8 text-xs focus:border-accent pr-6"
                                             onBlur={(e) => {
@@ -324,7 +325,7 @@ export default function PositionDetail() {
                                 <div className="flex items-start gap-2 bg-primary/5 border border-primary/20 rounded-lg px-3 py-2">
                                   <MessageSquare className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
                                   <div>
-                                    <p className="text-[10px] font-mono text-primary uppercase tracking-widest mb-0.5">Edző komment</p>
+                                    <p className="text-[10px] font-mono text-primary uppercase tracking-widest mb-0.5">{t("weight:coachCommentLabel")}</p>
                                     <p className="text-sm text-foreground/90 leading-snug">{coachComment.comment}</p>
                                   </div>
                                 </div>

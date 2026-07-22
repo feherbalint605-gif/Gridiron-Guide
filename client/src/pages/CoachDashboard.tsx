@@ -1,4 +1,7 @@
 import { useState, useEffect } from "react";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import i18n from "@/i18n";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Users, ChevronDown, ChevronUp, Dumbbell, Utensils, BarChart3, User, Save, MessageSquare, Plus, Trash2, RefreshCw, BookOpen, UserPlus, ExternalLink, Shield } from "lucide-react";
@@ -76,16 +79,16 @@ function AthleteCard({ athlete }: { athlete: UserType }) {
   // Save plan mutation — pass the plan explicitly to avoid stale closure
   const savePlanMutation = useMutation({
     mutationFn: async (planToSave: any) => {
-      if (!planToSave) throw new Error("Nincs terv");
+      if (!planToSave) throw new Error(i18n.t("coach:noPlanError"));
       const res = await apiRequest("POST", `/api/coach/athletes/${athlete.id}/plan/${positionId}`, planToSave);
-      if (!res.ok) throw new Error("Mentési hiba");
+      if (!res.ok) throw new Error(i18n.t("common:saveError"));
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/coach/athletes/${athlete.id}/plan/${positionId}`] });
-      toast({ title: "Edzésterv mentve!" });
+      toast({ title: i18n.t("coach:planSaved") });
     },
-    onError: () => toast({ title: "Hiba a mentésnél", variant: "destructive" }),
+    onError: () => toast({ title: i18n.t("coach:saveFailed"), variant: "destructive" }),
   });
 
   // Save comment mutation
@@ -140,7 +143,7 @@ function AthleteCard({ athlete }: { athlete: UserType }) {
       const next = withBase(prev);
       if (!next.workouts) next.workouts = {};
       if (!next.workouts.gym) next.workouts.gym = [];
-      next.workouts.gym.push({ type: "strength", title: "Új edzésnap", exercises: [] });
+      next.workouts.gym.push({ type: "strength", title: i18n.t("weight:addWorkoutDay"), exercises: [] });
       return next;
     });
   };
@@ -182,7 +185,7 @@ function AthleteCard({ athlete }: { athlete: UserType }) {
   };
 
   const plan = editablePlan || planData;
-  const displayName = [athlete.firstName, athlete.lastName].filter(Boolean).join(" ") || athlete.email || "Ismeretlen játékos";
+  const displayName = [athlete.firstName, athlete.lastName].filter(Boolean).join(" ") || athlete.email || i18n.t("common:unknownPlayer");
 
   return (
     <div className="bg-card/30 border border-border rounded-xl overflow-hidden">
@@ -205,7 +208,7 @@ function AthleteCard({ athlete }: { athlete: UserType }) {
               {positionId}
             </span>
           ) : (
-            <span className="px-3 py-1 rounded-full bg-muted/20 text-muted-foreground text-xs">Nincs pozíció</span>
+            <span className="px-3 py-1 rounded-full bg-muted/20 text-muted-foreground text-xs">{i18n.t("coach:noPosition")}</span>
           )}
           {open ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
         </div>
@@ -222,15 +225,15 @@ function AthleteCard({ athlete }: { athlete: UserType }) {
           >
             {!positionId ? (
               <div className="px-4 pb-6 text-center text-muted-foreground text-sm py-6">
-                Ez a játékos még nem választott pozíciót.
+                {i18n.t("coach:athleteNoPosition")}
               </div>
             ) : (
               <div className="px-4 pb-4">
                 {/* Tabs */}
                 <div className="flex flex-wrap gap-2 mb-4 border-t border-border/50 pt-4">
-                  {([["workout", <Dumbbell className="w-4 h-4" />, "Edzésterv"],
-                     ["diet", <Utensils className="w-4 h-4" />, "Étrend"],
-                     ["tracking", <BarChart3 className="w-4 h-4" />, "Weight Tracking"]] as const).map(([key, icon, label]) => (
+                  {([["workout", <Dumbbell className="w-4 h-4" />, i18n.t("coach:workoutTab")],
+                     ["diet", <Utensils className="w-4 h-4" />, i18n.t("coach:dietTab")],
+                     ["tracking", <BarChart3 className="w-4 h-4" />, i18n.t("coach:trackingTab")]] as const).map(([key, icon, label]) => (
                     <button
                       key={key}
                       onClick={() => setTab(key as Tab)}
@@ -264,7 +267,7 @@ function AthleteCard({ athlete }: { athlete: UserType }) {
                               <button
                                 onClick={() => removeWorkoutDay(wIdx)}
                                 className="p-1 rounded text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-colors shrink-0"
-                                title="Edzésnap törlése"
+                                title={i18n.t("weight:deleteWorkoutDay")}
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -273,9 +276,9 @@ function AthleteCard({ athlete }: { athlete: UserType }) {
                             <div className="p-3 space-y-2">
                               {/* Header row */}
                               <div className="grid grid-cols-[1fr_52px_52px_28px] gap-2 text-[10px] text-muted-foreground uppercase tracking-widest px-1">
-                                <span>Gyakorlat</span>
-                                <span className="text-center">Szett</span>
-                                <span className="text-center">Ismétlés</span>
+                                <span>{i18n.t("weight:exercise")}</span>
+                                <span className="text-center">{i18n.t("weight:sets")}</span>
+                                <span className="text-center">{i18n.t("weight:reps")}</span>
                                 <span />
                               </div>
 
@@ -285,7 +288,7 @@ function AthleteCard({ athlete }: { athlete: UserType }) {
                                     className="h-8 text-xs bg-black/40 border-border/30 focus:border-primary"
                                     value={ex.name}
                                     onChange={e => updateExercise(wIdx, eIdx, "name", e.target.value)}
-                                    placeholder="Gyakorlat neve..."
+                                    placeholder={i18n.t("weight:exerciseNamePlaceholder")}
                                   />
                                   <Input
                                     className="h-8 text-xs bg-black/40 border-border/30 focus:border-primary text-center"
@@ -311,7 +314,7 @@ function AthleteCard({ athlete }: { athlete: UserType }) {
                                 onClick={() => addExercise(wIdx)}
                                 className="flex items-center gap-2 w-full mt-1 px-2 py-1.5 rounded border border-dashed border-primary/20 text-primary/50 hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-all text-xs"
                               >
-                                <Plus className="w-3.5 h-3.5" /> Gyakorlat hozzáadása
+                                <Plus className="w-3.5 h-3.5" /> {i18n.t("weight:addExercise")}
                               </button>
                             </div>
                           </div>
@@ -322,7 +325,7 @@ function AthleteCard({ athlete }: { athlete: UserType }) {
                           onClick={addWorkoutDay}
                           className="flex items-center justify-center gap-2 w-full py-3 rounded-lg border border-dashed border-primary/30 text-primary/60 hover:text-primary hover:border-primary/60 hover:bg-primary/5 transition-all text-sm font-bold"
                         >
-                          <Plus className="w-4 h-4" /> Edzésnap hozzáadása
+                          <Plus className="w-4 h-4" /> {i18n.t("weight:addWorkoutDay")}
                         </button>
 
                         <Button
@@ -331,7 +334,7 @@ function AthleteCard({ athlete }: { athlete: UserType }) {
                           className="w-full bg-primary text-black font-bold hover:bg-primary/80"
                         >
                           <Save className="w-4 h-4 mr-2" />
-                          {savePlanMutation.isPending ? "Mentés..." : "Edzésterv mentése"}
+                          {savePlanMutation.isPending ? i18n.t("common:saving") : i18n.t("coach:saveWorkoutPlan")}
                         </Button>
                       </div>
                     )}
@@ -341,7 +344,7 @@ function AthleteCard({ athlete }: { athlete: UserType }) {
                       <div className="space-y-4">
                         {/* Protein target */}
                         <div className="flex items-center gap-4 bg-black/20 rounded-lg p-3 border border-border/30">
-                          <span className="text-xs font-mono text-primary uppercase tracking-widest flex-1">Napi fehérje cél</span>
+                          <span className="text-xs font-mono text-primary uppercase tracking-widest flex-1">{i18n.t("weight:dailyProteinGoal")}</span>
                           <div className="flex items-center gap-2">
                             <Input
                               className="w-20 h-8 text-sm bg-black/40 border-primary/20 focus:border-primary text-center font-bold"
@@ -375,7 +378,7 @@ function AthleteCard({ athlete }: { athlete: UserType }) {
                                 onClick={() => addMealItem(mIdx)}
                                 className="text-xs text-primary/60 hover:text-primary transition-colors mt-1"
                               >
-                                + Étel hozzáadása
+                                {i18n.t("weight:addFood")}
                               </button>
                             </div>
                           </div>
@@ -387,7 +390,7 @@ function AthleteCard({ athlete }: { athlete: UserType }) {
                           className="w-full bg-primary text-black font-bold hover:bg-primary/80"
                         >
                           <Save className="w-4 h-4 mr-2" />
-                          {savePlanMutation.isPending ? "Mentés..." : "Étrend mentése"}
+                          {savePlanMutation.isPending ? i18n.t("common:saving") : i18n.t("coach:saveDiet")}
                         </Button>
                       </div>
                     )}
@@ -397,7 +400,7 @@ function AthleteCard({ athlete }: { athlete: UserType }) {
                       <div className="space-y-4">
                         {/* Week selector */}
                         <div className="flex items-center gap-3 bg-card p-2 rounded-lg border border-border w-fit">
-                          <span className="text-xs font-mono uppercase text-muted-foreground">Hét:</span>
+                          <span className="text-xs font-mono uppercase text-muted-foreground">{i18n.t("weight:weekLabel")}</span>
                           {[1,2,3,4,5,6].map(w => (
                             <button
                               key={w}
@@ -437,7 +440,7 @@ function AthleteCard({ athlete }: { athlete: UserType }) {
                                         const log = exLogs.find(l => l.setIndex === sIdx);
                                         return (
                                           <div key={sIdx} className="bg-black/30 rounded px-2 py-1 flex items-center gap-2 border border-border/20">
-                                            <span className="text-[9px] text-muted-foreground font-mono">S{sIdx + 1}</span>
+                                            <span className="text-[9px] text-muted-foreground font-mono">{i18n.t("weight:setLabel", { n: sIdx + 1 })}</span>
                                             {log ? (
                                               <span className="text-xs text-foreground font-mono">{log.weight}lbs × {log.reps}</span>
                                             ) : (
@@ -452,7 +455,7 @@ function AthleteCard({ athlete }: { athlete: UserType }) {
                                     <div className="flex items-start gap-2">
                                       <MessageSquare className="w-3.5 h-3.5 text-primary/50 mt-2 shrink-0" />
                                       <Textarea
-                                        placeholder="Edző komment ehhez a feladathoz..."
+                                        placeholder={i18n.t("weight:coachCommentPlaceholder")}
                                         className="text-xs bg-black/30 border-primary/10 focus:border-primary/40 min-h-[56px] resize-none"
                                         value={commentMap[commentKey] ?? ""}
                                         onChange={e => setCommentMap(prev => ({ ...prev, [commentKey]: e.target.value }))}
@@ -503,7 +506,7 @@ function TeamsTab({ athletes, onOpenChat }: { athletes: UserType[]; onOpenChat: 
   const createTeam = useMutation({
     mutationFn: async (name: string) => (await apiRequest("POST", "/api/coach/teams", { name })).json(),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/coach/teams"] }); setNewTeamName(""); },
-    onError: () => toast({ title: "Hiba", description: "Nem sikerült létrehozni a csapatot.", variant: "destructive" }),
+    onError: () => toast({ title: i18n.t("common:error"), description: i18n.t("coach:teamCreateError"), variant: "destructive" }),
   });
 
   const deleteTeam = useMutation({
@@ -535,13 +538,13 @@ function TeamsTab({ athletes, onOpenChat }: { athletes: UserType[]; onOpenChat: 
       {/* Create team */}
       <div className="bg-card/20 border border-border/50 rounded-xl p-4">
         <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-          <Plus className="w-4 h-4 text-primary" /> Új csapat létrehozása
+          <Plus className="w-4 h-4 text-primary" /> {i18n.t("coach:createNewTeam")}
         </h3>
         <div className="flex gap-2">
           <Input
             value={newTeamName}
             onChange={e => setNewTeamName(e.target.value)}
-            placeholder="Csapat neve (pl. Offense, Defense...)"
+            placeholder={i18n.t("coach:teamNamePlaceholder")}
             className="flex-1 bg-black/30 border-primary/20 h-9 text-sm"
             onKeyDown={e => { if (e.key === "Enter" && newTeamName.trim()) createTeam.mutate(newTeamName); }}
             data-testid="input-team-name"
@@ -552,7 +555,7 @@ function TeamsTab({ athletes, onOpenChat }: { athletes: UserType[]; onOpenChat: 
             className="bg-primary text-black font-bold shrink-0"
             data-testid="button-create-team"
           >
-            Létrehozás
+            {i18n.t("common:create")}
           </Button>
         </div>
       </div>
@@ -561,7 +564,7 @@ function TeamsTab({ athletes, onOpenChat }: { athletes: UserType[]; onOpenChat: 
       {teams.length === 0 ? (
         <div className="text-center py-16 bg-card/10 rounded-2xl border border-dashed border-border">
           <Shield className="w-12 h-12 text-primary/20 mx-auto mb-3" />
-          <p className="text-muted-foreground text-sm">Még nincs csapat. Hozz létre egyet!</p>
+          <p className="text-muted-foreground text-sm">{i18n.t("coach:noTeams")}</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -573,7 +576,7 @@ function TeamsTab({ athletes, onOpenChat }: { athletes: UserType[]; onOpenChat: 
                   <div className="flex items-center gap-2">
                     <Shield className="w-4 h-4 text-primary" />
                     <span className="font-bold text-foreground">{team.name}</span>
-                    <span className="text-xs text-muted-foreground">({team.members.length} tag)</span>
+                    <span className="text-xs text-muted-foreground">({i18n.t("chat:memberCount", { count: team.members.length })})</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -581,10 +584,10 @@ function TeamsTab({ athletes, onOpenChat }: { athletes: UserType[]; onOpenChat: 
                       className="flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 border border-cyan-500/30 rounded px-2 py-1 transition-colors"
                       data-testid={`button-open-chat-${team.id}`}
                     >
-                      <MessageSquare className="w-3 h-3" /> Üzenőfal
+                      <MessageSquare className="w-3 h-3" /> {i18n.t("chat:messageWall")}
                     </button>
                     <button
-                      onClick={() => { if (confirm(`Törlöd a "${team.name}" csapatot?`)) deleteTeam.mutate(team.id); }}
+                      onClick={() => { if (confirm(i18n.t("coach:confirmDeleteTeam", { name: team.name }))) deleteTeam.mutate(team.id); }}
                       className="text-red-400/60 hover:text-red-400 transition-colors p-1"
                       data-testid={`button-delete-team-${team.id}`}
                     >
@@ -596,7 +599,7 @@ function TeamsTab({ athletes, onOpenChat }: { athletes: UserType[]; onOpenChat: 
                 <div className="p-4 space-y-3">
                   {/* Members */}
                   {team.members.length === 0 ? (
-                    <p className="text-xs text-muted-foreground italic">Még nincs tag ebben a csapatban.</p>
+                    <p className="text-xs text-muted-foreground italic">{i18n.t("coach:noTeamMembers")}</p>
                   ) : (
                     <div className="flex flex-wrap gap-2">
                       {team.members.map(member => (
@@ -630,13 +633,13 @@ function TeamsTab({ athletes, onOpenChat }: { athletes: UserType[]; onOpenChat: 
                       data-testid={`button-toggle-add-${team.id}`}
                     >
                       <UserPlus className="w-3.5 h-3.5" />
-                      {addingToTeam === team.id ? "Bezárás" : "Játékos hozzáadása"}
+                      {addingToTeam === team.id ? i18n.t("common:close") : i18n.t("coach:addPlayer")}
                     </button>
 
                     {addingToTeam === team.id && (
                       <div className="mt-3 bg-black/20 border border-border/30 rounded-lg overflow-hidden">
                         {athletes.length === 0 ? (
-                          <p className="text-xs text-muted-foreground p-3 text-center">Nincs elérhető játékos.</p>
+                          <p className="text-xs text-muted-foreground p-3 text-center">{i18n.t("coach:noAvailablePlayers")}</p>
                         ) : (
                           <div className="divide-y divide-border/20 max-h-52 overflow-y-auto">
                             {athletes.map(a => {
@@ -655,7 +658,7 @@ function TeamsTab({ athletes, onOpenChat }: { athletes: UserType[]; onOpenChat: 
                                       className="text-xs text-red-400/70 hover:text-red-400 border border-red-400/20 hover:border-red-400/40 rounded px-2 py-0.5 transition-all"
                                       data-testid={`button-remove-from-panel-${a.id}`}
                                     >
-                                      Eltávolítás
+                                      {i18n.t("common:remove")}
                                     </button>
                                   ) : (
                                     <button
@@ -664,7 +667,7 @@ function TeamsTab({ athletes, onOpenChat }: { athletes: UserType[]; onOpenChat: 
                                       className="text-xs text-primary hover:text-primary/80 border border-primary/30 hover:border-primary/60 rounded px-2 py-0.5 transition-all disabled:opacity-40"
                                       data-testid={`button-add-to-panel-${a.id}`}
                                     >
-                                      Hozzáadás
+                                      {i18n.t("common:add")}
                                     </button>
                                   )}
                                 </div>
@@ -685,7 +688,7 @@ function TeamsTab({ athletes, onOpenChat }: { athletes: UserType[]; onOpenChat: 
       {/* Unassigned athletes */}
       {unassigned.length > 0 && (
         <div className="bg-card/10 border border-dashed border-border/40 rounded-xl p-4">
-          <p className="text-xs text-muted-foreground mb-2 font-mono uppercase tracking-widest">Csapat nélküli játékosok</p>
+          <p className="text-xs text-muted-foreground mb-2 font-mono uppercase tracking-widest">{i18n.t("coach:unassignedAthletes")}</p>
           <div className="flex flex-wrap gap-2">
             {unassigned.map(a => (
               <div key={a.id} className="flex items-center gap-1.5 bg-black/20 border border-border/30 rounded-full px-2.5 py-1 text-xs text-muted-foreground">
@@ -701,6 +704,7 @@ function TeamsTab({ athletes, onOpenChat }: { athletes: UserType[]; onOpenChat: 
 }
 
 export default function CoachDashboard({ onSwitchRole }: { onSwitchRole: () => void }) {
+  const { t } = useTranslation();
   const [coachTab, setCoachTab] = useState<'athletes' | 'teams' | 'playbook'>('athletes');
   const [teamChatId, setTeamChatId] = useState<number | null>(null);
   const { data: athletes = [], isLoading, refetch } = useQuery<UserType[]>({
@@ -721,23 +725,24 @@ export default function CoachDashboard({ onSwitchRole }: { onSwitchRole: () => v
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-4xl font-display font-black text-primary italic mb-1">COACH PORTAL</h1>
+            <h1 className="text-4xl font-display font-black text-primary italic mb-1">{i18n.t("coach:portalTitle")}</h1>
           </div>
           <div className="flex items-center gap-2">
+            <LanguageSwitcher />
             {coachTab === 'athletes' && (
               <button
                 onClick={() => refetch()}
                 className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors uppercase tracking-widest border border-border rounded px-3 py-2"
-                title="Frissítés"
+                title={i18n.t("common:refresh")}
               >
-                <RefreshCw className="w-3.5 h-3.5" /> Frissítés
+                <RefreshCw className="w-3.5 h-3.5" /> {i18n.t("common:refresh")}
               </button>
             )}
             <button
               onClick={onSwitchRole}
               className="text-xs text-muted-foreground hover:text-primary transition-colors uppercase tracking-widest border border-border rounded px-3 py-2"
             >
-              Szerepkör váltás
+              {i18n.t("nav:switchRole")}
             </button>
           </div>
         </div>
@@ -750,7 +755,7 @@ export default function CoachDashboard({ onSwitchRole }: { onSwitchRole: () => v
             className={cn("flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all",
               coachTab === 'athletes' ? "bg-primary text-black" : "text-muted-foreground hover:text-foreground hover:bg-white/5 border border-border")}
           >
-            <Users className="w-4 h-4" /> Játékosok
+            <Users className="w-4 h-4" /> {i18n.t("coach:athletesTab")}
           </button>
           <button
             onClick={() => setCoachTab('teams')}
@@ -758,7 +763,7 @@ export default function CoachDashboard({ onSwitchRole }: { onSwitchRole: () => v
             className={cn("flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all",
               coachTab === 'teams' ? "bg-primary text-black" : "text-muted-foreground hover:text-foreground hover:bg-white/5 border border-border")}
           >
-            <Shield className="w-4 h-4" /> Csapatok
+            <Shield className="w-4 h-4" /> {i18n.t("coach:teamsTab")}
           </button>
           <button
             onClick={() => setCoachTab('playbook')}
@@ -766,7 +771,7 @@ export default function CoachDashboard({ onSwitchRole }: { onSwitchRole: () => v
             className={cn("flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all",
               coachTab === 'playbook' ? "bg-primary text-black" : "text-muted-foreground hover:text-foreground hover:bg-white/5 border border-border")}
           >
-            <BookOpen className="w-4 h-4" /> Playbook
+            <BookOpen className="w-4 h-4" /> {i18n.t("coach:playbookTab")}
           </button>
         </div>
 
@@ -783,14 +788,14 @@ export default function CoachDashboard({ onSwitchRole }: { onSwitchRole: () => v
             ) : !athletes || athletes.length === 0 ? (
               <div className="text-center py-20 bg-card/20 rounded-2xl border border-dashed border-primary/20">
                 <Users className="w-16 h-16 text-primary/20 mx-auto mb-4" />
-                <h2 className="text-xl font-display font-bold text-foreground mb-2">Még nincs játékos</h2>
+                <h2 className="text-xl font-display font-bold text-foreground mb-2">{i18n.t("coach:noAthletes")}</h2>
                 <p className="text-muted-foreground max-w-sm mx-auto text-sm">
-                  Azok a játékosok jelennek meg itt, akik csatlakoztak hozzád az athlete felületen.
+                  {i18n.t("coach:noAthletesDescription")}
                 </p>
               </div>
             ) : (
               <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">{athletes.length} játékos csatlakozott</p>
+                <p className="text-sm text-muted-foreground">{i18n.t("coach:athletesJoined", { count: athletes.length })}</p>
                 {athletes.map(athlete => (
                   <AthleteCard key={athlete.id} athlete={athlete} />
                 ))}

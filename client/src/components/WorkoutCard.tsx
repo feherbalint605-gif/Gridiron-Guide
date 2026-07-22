@@ -1,4 +1,5 @@
 import { Dumbbell, Clock, Activity, AlertCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { NeonCard } from "./NeonCard";
 import type { PositionDetails } from "@shared/schema";
 
@@ -7,6 +8,7 @@ interface WorkoutCardProps {
 }
 
 export function WorkoutCard({ workout }: WorkoutCardProps) {
+  const { t } = useTranslation();
   return (
     <NeonCard hoverEffect={false} className="h-full bg-card/50 backdrop-blur-sm">
       <div className="flex items-center gap-3 mb-4 border-b border-border pb-3">
@@ -18,7 +20,7 @@ export function WorkoutCard({ workout }: WorkoutCardProps) {
         <div>
           <h3 className="text-lg font-bold text-foreground">{workout.title}</h3>
           <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
-            {workout.type} Focus
+            {workout.type} {t("common:focus")}
           </p>
         </div>
       </div>

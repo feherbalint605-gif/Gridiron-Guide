@@ -1,4 +1,6 @@
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
+import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { type Position } from "@shared/schema";
 import { type User } from "@shared/models/auth";
@@ -13,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
 export function AppSidebar({ onSwitchRole }: { onSwitchRole: () => void }) {
+  const { t } = useTranslation();
   const [location] = useLocation();
   const { user, logout } = useAuth();
   const { toast } = useToast();
@@ -27,17 +30,17 @@ export function AppSidebar({ onSwitchRole }: { onSwitchRole: () => void }) {
     mutationFn: async (email: string) => {
       const res = await apiRequest("POST", "/api/user/join-coach", { email });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Hiba történt.");
+      if (!res.ok) throw new Error(data.message || i18n.t("nav:joinCoachError"));
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       setShowJoinCoach(false);
       setCoachEmail("");
-      toast({ title: "Sikeresen csatlakoztál az edzőhöz!" });
+      toast({ title: t("nav:joinCoachSuccess") });
     },
     onError: (err: any) => {
-      toast({ title: "Hiba", description: err.message, variant: "destructive" });
+      toast({ title: t("common:error"), description: err.message, variant: "destructive" });
     },
   });
 
@@ -48,22 +51,22 @@ export function AppSidebar({ onSwitchRole }: { onSwitchRole: () => void }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      toast({ title: "Lecsatlakoztál az edzőtől." });
+      toast({ title: t("nav:leaveCoachSuccess") });
     },
   });
 
   const mainItems = [
-    { title: "Dashboard", url: "/", icon: Home },
-    { title: "Playbook", url: "/playbook", icon: ClipboardList },
-    { title: "Film", url: "/film", icon: Video },
-    { title: "Study", url: "/study", icon: BookOpen },
+    { title: t("nav:dashboard"), url: "/", icon: Home },
+    { title: t("nav:playbook"), url: "/playbook", icon: ClipboardList },
+    { title: t("nav:film"), url: "/film", icon: Video },
+    { title: t("nav:study"), url: "/study", icon: BookOpen },
   ];
 
   return (
     <Sidebar>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel>{t("nav:navigation")}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {mainItems.map((item) => (
@@ -82,20 +85,20 @@ export function AppSidebar({ onSwitchRole }: { onSwitchRole: () => void }) {
 
         {/* My Coach section */}
         <SidebarGroup>
-          <SidebarGroupLabel>Edzőm</SidebarGroupLabel>
+          <SidebarGroupLabel>{t("nav:myCoach")}</SidebarGroupLabel>
           <SidebarGroupContent>
             <div className="px-2 space-y-2">
               {user?.coachId ? (
                 <div className="flex items-center gap-2 p-2 rounded-lg bg-primary/5 border border-primary/10">
                   <UserCheck className="w-4 h-4 text-primary shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-primary truncate">Csatlakozva</p>
+                    <p className="text-xs font-bold text-primary truncate">{t("nav:connected")}</p>
                     <button
                       onClick={() => leaveCoachMutation.mutate()}
                       disabled={leaveCoachMutation.isPending}
                       className="text-[10px] text-muted-foreground hover:text-destructive transition-colors"
                     >
-                      Lecsatlakozás
+                      {t("nav:disconnect")}
                     </button>
                   </div>
                 </div>
@@ -106,7 +109,7 @@ export function AppSidebar({ onSwitchRole }: { onSwitchRole: () => void }) {
                     className="w-full flex items-center gap-2 p-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
                   >
                     <UserIcon className="w-4 h-4" />
-                    <span>Csatlakozás edzőhöz</span>
+                    <span>{t("nav:joinCoach")}</span>
                     <ChevronDown className={cn("w-3 h-3 ml-auto transition-transform", showJoinCoach && "rotate-180")} />
                   </button>
 
@@ -114,7 +117,7 @@ export function AppSidebar({ onSwitchRole }: { onSwitchRole: () => void }) {
                     <div className="space-y-2 px-1">
                       <Input
                         type="email"
-                        placeholder="Edző e-mail címe"
+                        placeholder={t("nav:coachEmailPlaceholder")}
                         value={coachEmail}
                         onChange={e => setCoachEmail(e.target.value)}
                         className="h-8 text-xs bg-black/40 border-primary/20 focus:border-primary"
@@ -130,7 +133,7 @@ export function AppSidebar({ onSwitchRole }: { onSwitchRole: () => void }) {
                         disabled={!coachEmail.trim() || joinCoachMutation.isPending}
                         onClick={() => joinCoachMutation.mutate(coachEmail.trim())}
                       >
-                        {joinCoachMutation.isPending ? "Csatlakozás..." : "Csatlakozás"}
+                        {joinCoachMutation.isPending ? t("common:connecting") : t("nav:join")}
                       </Button>
                     </div>
                   )}
@@ -147,7 +150,7 @@ export function AppSidebar({ onSwitchRole }: { onSwitchRole: () => void }) {
             <UserIcon className="w-4 h-4 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{user?.firstName || "Athlete"}</p>
+            <p className="text-sm font-medium truncate">{user?.firstName || t("common:athlete")}</p>
             <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
           </div>
         </div>
@@ -157,7 +160,7 @@ export function AppSidebar({ onSwitchRole }: { onSwitchRole: () => void }) {
           className="w-full justify-start text-muted-foreground hover:text-primary mb-1"
           onClick={onSwitchRole}
         >
-          Szerepkör váltás
+          {t("nav:switchRole")}
         </Button>
         <Button
           variant="outline"
@@ -165,7 +168,7 @@ export function AppSidebar({ onSwitchRole }: { onSwitchRole: () => void }) {
           className="w-full justify-start"
           onClick={() => logout()}
         >
-          Kijelentkezés
+          {t("nav:logout")}
         </Button>
       </div>
     </Sidebar>

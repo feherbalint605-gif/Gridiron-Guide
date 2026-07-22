@@ -1,4 +1,5 @@
 import { Utensils, CheckCircle2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { NeonCard } from "./NeonCard";
 import type { PositionDetails } from "@shared/schema";
 
@@ -7,6 +8,7 @@ interface DietCardProps {
 }
 
 export function DietCard({ meal }: DietCardProps) {
+  const { t } = useTranslation();
   return (
     <NeonCard hoverEffect={false} className="bg-card/50 backdrop-blur-sm">
       <div className="flex items-center justify-between mb-4 border-b border-border pb-3">
@@ -19,7 +21,7 @@ export function DietCard({ meal }: DietCardProps) {
         {(meal.calories || meal.protein) && (
           <div className="text-right text-xs text-muted-foreground font-mono">
             {meal.calories && <div>{meal.calories} kcal</div>}
-            {meal.protein && <div className="text-primary">{meal.protein} protein</div>}
+            {meal.protein && <div className="text-primary">{meal.protein} {t("common:protein")}</div>}
           </div>
         )}
       </div>

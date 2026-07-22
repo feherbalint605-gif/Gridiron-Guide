@@ -1,4 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import i18n from "@/i18n";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, BookOpen, FolderOpen, ArrowLeft, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -174,7 +176,7 @@ function FieldSVG({ play }: { play: PlayData }) {
         <g>
           <rect x={0} y={yToYard(0) - 2} width={W} height={20} fill="#22d3ee08" />
           <text x={W / 2} y={yToYard(0) + 10} fill="#22d3ee" fontSize={10} fontFamily="monospace" textAnchor="middle" opacity={0.3} fontWeight="bold">
-            SAJÁT ENDZONE
+            {i18n.t("playbook:ownEndzone")}
           </text>
         </g>
       )}
@@ -219,7 +221,7 @@ function FieldSVG({ play }: { play: PlayData }) {
       <line x1={0} y1={losY} x2={W} y2={losY} stroke="#22d3ee" strokeWidth={2.5} />
       <rect x={W - 60} y={losY - 14} width={56} height={14} fill="#22d3ee15" rx={2} />
       <text x={W - 6} y={losY - 3} fill="#22d3ee" fontSize={9} fontFamily="monospace" textAnchor="end" fontWeight="bold" opacity={0.9}>
-        LOS {Math.round(yardFromY(losY))}
+        {i18n.t("playbook:losLabel")} {Math.round(yardFromY(losY))}
       </text>
 
       <line x1={5} y1={0} x2={5} y2={H} stroke="#22d3ee" strokeWidth={2} opacity={0.15} />
@@ -336,7 +338,7 @@ function FieldSVG({ play }: { play: PlayData }) {
             ? "bg-black/40 border border-cyan-500/10 cursor-not-allowed opacity-30"
             : "bg-cyan-500/90 border border-cyan-400 hover:bg-cyan-400 hover:scale-105 cursor-pointer"
       )}
-      title="Play animáció indítása"
+      title={i18n.t("playbook:playAnimationTitle")}
     >
       {isAnimating ? (
         <div className="w-4 h-4 border-2 border-cyan-400/40 border-t-cyan-400 rounded-full animate-spin" />
@@ -351,6 +353,7 @@ function FieldSVG({ play }: { play: PlayData }) {
 type ViewState = { mode: 'folders' } | { mode: 'plays'; folder: string } | { mode: 'detail'; play: SavedPlay };
 
 export default function PlaybookViewer() {
+  const { t } = useTranslation();
   const { data: plays = [], isLoading } = useQuery<SavedPlay[]>({ queryKey: ['/api/my-playbook'] });
   const [view, setView] = useState<ViewState>({ mode: 'folders' });
 
@@ -366,7 +369,7 @@ export default function PlaybookViewer() {
     return (
       <div className="text-center py-20" data-testid="playbook-empty">
         <BookOpen className="w-12 h-12 text-cyan-500/20 mx-auto mb-3" />
-        <p className="text-muted-foreground text-sm">Az edződ még nem mentett playt a playbookba.</p>
+        <p className="text-muted-foreground text-sm">{i18n.t("playbook:noPlays")}</p>
       </div>
     );
   }
@@ -396,7 +399,7 @@ export default function PlaybookViewer() {
             data-testid="button-back-to-plays"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Vissza: {folderName}</span>
+            <span>{i18n.t("playbook:backToFolder", { folder: folderName === 'Általános' ? i18n.t("playbook:generalFolder") : folderName })}</span>
           </button>
           <span className="text-[10px] text-cyan-400/30 font-mono">
             {currentIndex + 1} / {folderPlays.length}
@@ -405,7 +408,7 @@ export default function PlaybookViewer() {
 
         <div className="text-center">
           <p className="font-bold text-foreground text-lg" data-testid="text-play-name">{current.name}</p>
-          <p className="text-xs text-cyan-400/40">{folderName}</p>
+          <p className="text-xs text-cyan-400/40">{folderName === 'Általános' ? i18n.t("playbook:generalFolder") : folderName}</p>
         </div>
 
         <div className="relative flex items-center gap-2">
@@ -453,7 +456,7 @@ export default function PlaybookViewer() {
 
         {current.data.note && (
           <div className="bg-black/30 border border-cyan-500/15 rounded-lg px-3 py-2" data-testid="text-play-note">
-            <p className="text-[10px] text-cyan-400/40 font-mono uppercase tracking-wider mb-0.5">Jegyzet</p>
+            <p className="text-[10px] text-cyan-400/40 font-mono uppercase tracking-wider mb-0.5">{i18n.t("playbook:note")}</p>
             <p className="text-xs text-white/70 whitespace-pre-wrap">{current.data.note}</p>
           </div>
         )}
@@ -488,17 +491,17 @@ export default function PlaybookViewer() {
           data-testid="button-back-to-folders"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Mappák</span>
+          <span>{i18n.t("playbook:folders")}</span>
         </button>
 
         <div className="flex items-center gap-2">
           <FolderOpen className="w-5 h-5 text-cyan-400" />
-          <h2 className="text-lg font-bold text-foreground">{view.folder}</h2>
-          <span className="text-xs text-cyan-400/40">{folderPlays.length} play</span>
+          <h2 className="text-lg font-bold text-foreground">{view.folder === 'Általános' ? i18n.t("playbook:generalFolder") : view.folder}</h2>
+          <span className="text-xs text-cyan-400/40">{i18n.t("playbook:playCount", { count: folderPlays.length })}</span>
         </div>
 
         {folderPlays.length === 0 ? (
-          <p className="text-center text-muted-foreground/50 text-sm py-10">Nincs play ebben a mappában.</p>
+          <p className="text-center text-muted-foreground/50 text-sm py-10">{i18n.t("playbook:noPlaysInFolder")}</p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {folderPlays.map(p => (
@@ -525,8 +528,8 @@ export default function PlaybookViewer() {
   return (
     <div className="space-y-4 max-w-3xl mx-auto" data-testid="playbook-viewer">
       <div className="text-center mb-2">
-        <h2 className="text-lg font-bold text-foreground">Playbook</h2>
-        <p className="text-xs text-cyan-400/40">{plays.length} play, {sortedFolders.length} mappa</p>
+        <h2 className="text-lg font-bold text-foreground">{i18n.t("playbook:title")}</h2>
+        <p className="text-xs text-cyan-400/40">{i18n.t("playbook:folderCount", { plays: plays.length, folders: sortedFolders.length })}</p>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -538,8 +541,8 @@ export default function PlaybookViewer() {
             className="group bg-black/40 border border-cyan-500/15 rounded-lg p-4 text-left hover:border-cyan-500/40 transition-all hover:shadow-lg hover:shadow-cyan-500/5"
           >
             <FolderOpen className="w-8 h-8 text-cyan-400/40 group-hover:text-cyan-400 transition-colors mb-2" />
-            <p className="font-bold text-sm text-foreground group-hover:text-cyan-400 transition-colors truncate">{folder}</p>
-            <p className="text-[11px] text-cyan-400/30 mt-0.5">{folderPlays.length} play</p>
+            <p className="font-bold text-sm text-foreground group-hover:text-cyan-400 transition-colors truncate">{folder === 'Általános' ? i18n.t("playbook:generalFolder") : folder}</p>
+            <p className="text-[11px] text-cyan-400/30 mt-0.5">{i18n.t("playbook:playCount", { count: folderPlays.length })}</p>
           </button>
         ))}
       </div>

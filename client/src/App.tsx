@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useParams } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -13,21 +13,29 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useAuth } from "@/hooks/use-auth";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import RoleSelection from "@/components/RoleSelection";
 import Login from "@/pages/Login";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+
+function TeamChatRoute() {
+  const { id } = useParams<{ id: string }>();
+  return <TeamChat teamIdOverride={id ? parseInt(id, 10) : undefined} />;
+}
 
 function AthleteRouter() {
+  const { t } = useTranslation();
   return (
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/position/:id" component={PositionDetail} />
       <Route path="/playbook" component={PlaybookViewer} />
-      <Route path="/team/:id" component={TeamChat} />
+      <Route path="/team/:id" component={TeamChatRoute} />
       <Route path="/film">
-        <div className="p-8 text-center text-muted-foreground">Film content coming soon...</div>
+        <div className="p-8 text-center text-muted-foreground">{t("dashboard:filmComingSoon")}</div>
       </Route>
       <Route path="/study">
-        <div className="p-8 text-center text-muted-foreground">Study material coming soon...</div>
+        <div className="p-8 text-center text-muted-foreground">{t("dashboard:studyComingSoon")}</div>
       </Route>
       <Route component={NotFound} />
     </Switch>
@@ -37,11 +45,12 @@ function AthleteRouter() {
 function App() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const [showRoleSelect, setShowRoleSelect] = useState(false);
+  const { t } = useTranslation();
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-background text-primary font-bold animate-pulse">
-        GRIDIRON TRAINING...
+        {t("nav:appTitle")}...
       </div>
     );
   }
@@ -78,8 +87,9 @@ function App() {
             <header className="flex items-center justify-between p-4 border-b border-border bg-card/50 backdrop-blur-sm">
               <div className="flex items-center gap-4">
                 <SidebarTrigger data-testid="button-sidebar-toggle" />
-                <h1 className="text-xl font-bold tracking-tighter text-primary">GRIDIRON TRAINING</h1>
+                <h1 className="text-xl font-bold tracking-tighter text-primary">{t("nav:appTitle")}</h1>
               </div>
+              <LanguageSwitcher />
             </header>
           )}
           <main className="flex-1 overflow-y-auto">
