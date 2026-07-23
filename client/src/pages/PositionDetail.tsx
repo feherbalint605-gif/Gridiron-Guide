@@ -12,6 +12,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import { lbsToDisplay, displayToLbs } from "@/lib/weight-conversion";
 
 export default function PositionDetail() {
   const { t } = useTranslation();
@@ -20,6 +22,18 @@ export default function PositionDetail() {
   const [activeTab, setActiveTab] = useState<"gym" | "field" | "diet" | "film" | "tracking">("gym");
   const [selectedWeek, setSelectedWeek] = useState(1);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const weightUnit: "lbs" | "kg" = (user?.weightUnit as "lbs" | "kg") || "lbs";
+
+  const weightUnitMutation = useMutation({
+    mutationFn: async (unit: "lbs" | "kg") => {
+      const res = await apiRequest("POST", "/api/user/weight-unit", { weightUnit: unit });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    },
+  });
 
   const { data: logs } = useQuery<any[]>({
     queryKey: [`/api/workout-logs/${id}`],
@@ -219,7 +233,29 @@ export default function PositionDetail() {
             {activeTab === "tracking" && (
               <div className="space-y-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-display font-bold text-primary">{t("weight:progressTracking")}</h3>
+                  <div className="flex items-center gap-4">
+                    <h3 className="text-xl font-display font-bold text-primary">{t("weight:progressTracking")}</h3>
+                    <div className="flex items-center rounded-lg border border-border overflow-hidden">
+                      <button
+                        onClick={() => weightUnitMutation.mutate("kg")}
+                        className={cn(
+                          "px-3 py-1.5 text-xs font-bold transition-all",
+                          weightUnit === "kg" ? "bg-primary text-background" : "text-muted-foreground hover:bg-white/5"
+                        )}
+                      >
+                        KG
+                      </button>
+                      <button
+                        onClick={() => weightUnitMutation.mutate("lbs")}
+                        className={cn(
+                          "px-3 py-1.5 text-xs font-bold transition-all",
+                          weightUnit === "lbs" ? "bg-primary text-background" : "text-muted-foreground hover:bg-white/5"
+                        )}
+                      >
+                        LBS
+                      </button>
+                    </div>
+                  </div>
                   <div className="flex items-center gap-4 bg-card p-2 rounded-lg border border-border">
                     <span className="text-sm font-mono uppercase text-muted-foreground">{t("weight:weekLabel")}</span>
                     {[1, 2, 3, 4, 5, 6].map(w => (
@@ -268,27 +304,33 @@ export default function PositionDetail() {
                                         <span className="text-[10px] font-mono text-muted-foreground w-8">{t("weight:setLabel", { n: sIdx + 1 })}</span>
                                         <div className="relative flex-1">
                                           <Input
-                                            key={`weight-${selectedWeek}-${sIdx}-${log?.id || 'new'}`}
+                                            key={`weight-${selectedWeek}-${sIdx}-${log?.id || 'new'}-${weightUnit}`}
                                             type="number"
+                                            step={weightUnit === "kg" ? "0.1" : "1"}
                                             placeholder={t("weight:lbsPlaceholder")}
-                                            defaultValue={log?.weight ?? ""}
+                                            defaultValue={log?.weight != null ? lbsToDisplay(log.weight, weightUnit) : ""}
                                             className="bg-black/50 border-primary/20 h-8 text-xs focus:border-primary pr-6"
                                             onBlur={(e) => {
-                                              const val = parseInt(e.target.value);
-                                              if (!isNaN(val) && val !== (log?.weight || 0)) {
-                                                mutation.mutate({
-                                                  positionId: id,
-                                                  week: selectedWeek,
-                                                  workoutTitle: workout.title,
-                                                  exerciseName: ex.name,
-                                                  setIndex: sIdx,
-                                                  weight: val,
-                                                  reps: log?.reps || 0
-                                                });
+                                              const rawVal = parseFloat(e.target.value);
+                                              if (!isNaN(rawVal)) {
+                                                const lbsVal = displayToLbs(rawVal, weightUnit);
+                                                if (lbsVal !== (log?.weight || 0)) {
+                                                  mutation.mutate({
+                                                    positionId: id,
+                                                    week: selectedWeek,
+                                                    workoutTitle: workout.title,
+                                                    exerciseName: ex.name,
+                                                    setIndex: sIdx,
+                                                    weight: lbsVal,
+                                                    reps: log?.reps || 0
+                                                  });
+                                                }
                                               }
                                             }}
                                           />
-                                          <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[8px] text-muted-foreground pointer-events-none uppercase">lbs</span>
+                                          <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[8px] text-muted-foreground pointer-events-none uppercase">
+                                            {weightUnit}
+                                          </span>
                                         </div>
                                         <div className="relative flex-1">
                                           <Input
