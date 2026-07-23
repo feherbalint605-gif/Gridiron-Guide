@@ -1,6 +1,5 @@
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 import { useTranslation } from "react-i18next";
-import i18n from "@/i18n";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { type Position } from "@shared/schema";
 import { type User } from "@shared/models/auth";
@@ -30,7 +29,7 @@ export function AppSidebar({ onSwitchRole }: { onSwitchRole: () => void }) {
     mutationFn: async (email: string) => {
       const res = await apiRequest("POST", "/api/user/join-coach", { email });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || i18n.t("nav:joinCoachError"));
+      if (!res.ok) throw new Error(data.message || t("nav:joinCoachError"));
       return data;
     },
     onSuccess: () => {

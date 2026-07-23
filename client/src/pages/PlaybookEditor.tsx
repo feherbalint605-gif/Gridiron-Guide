@@ -1,5 +1,4 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import i18n from "@/i18n";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { MousePointer, Pen, Plus, Trash2, Save, Check, X, FilePlus, AlertCircle, MessageSquare, FolderOpen, FolderPlus, ChevronRight, Play, Lock, Unlock, Users, Shield, Circle, Square, Spline } from "lucide-react";
@@ -105,7 +104,7 @@ export default function PlaybookEditor() {
     mutationFn: async ({ folder, teamId }: { folder: string; teamId: number | null }) =>
       (await apiRequest('PUT', '/api/playbook/folder-access', { folder, teamId })).json(),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/playbook/folder-access'] }),
-    onError: () => toast({ title: i18n.t("playbook:folderAccessSaveError"), variant: "destructive" }),
+    onError: () => toast({ title: t("playbook:folderAccessSaveError"), variant: "destructive" }),
   });
 
   const [folderMenuOpen, setFolderMenuOpen] = useState<string | null>(null);
@@ -126,7 +125,7 @@ export default function PlaybookEditor() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!playName.trim()) throw new Error(i18n.t("playbook:playNameRequired"));
+      if (!playName.trim()) throw new Error(t("playbook:playNameRequired"));
       const playData: PlayData = { ...play, note: playNote.trim() || undefined, mode: playMode };
       const body = { name: playName.trim(), folder: playFolder, data: playData };
       try {
@@ -135,13 +134,13 @@ export default function PlaybookEditor() {
           : await apiRequest('POST', '/api/playbook', body);
         return await res.json();
       } catch (err: any) {
-        throw new Error(err?.message || i18n.t("playbook:saveError"));
+        throw new Error(err?.message || t("playbook:saveError"));
       }
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/playbook'] });
       if (!editingId && data?.id) setEditingId(data.id);
-      toast({ title: editingId ? i18n.t("playbook:playUpdated") : i18n.t("playbook:playSaved") });
+      toast({ title: editingId ? t("playbook:playUpdated") : t("playbook:playSaved") });
     },
     onError: (e: any) => toast({ title: e.message, variant: 'destructive' }),
   });
@@ -151,7 +150,7 @@ export default function PlaybookEditor() {
     onSuccess: (_, deletedId) => {
       queryClient.invalidateQueries({ queryKey: ['/api/playbook'] });
       if (editingId === deletedId) newPlay();
-      toast({ title: i18n.t("playbook:playDeleted") });
+      toast({ title: t("playbook:playDeleted") });
     },
   });
 
@@ -641,14 +640,14 @@ export default function PlaybookEditor() {
             data-testid={`folder-access-menu-${folderMenuOpen}`}
           >
             <div className="px-3 py-1.5 text-[10px] text-cyan-400/50 uppercase tracking-widest font-mono border-b border-cyan-500/10 mb-1">
-              {i18n.t("playbook:folderAccessTitle", { folder: folderMenuOpen === 'Általános' ? i18n.t("playbook:generalFolder") : folderMenuOpen })}
+              {t("playbook:folderAccessTitle", { folder: folderMenuOpen === 'Általános' ? t("playbook:generalFolder") : folderMenuOpen })}
             </div>
             <button
               onClick={() => { setFolderAccessMutation.mutate({ folder: folderMenuOpen, teamId: null }); setFolderMenuOpen(null); setFolderMenuPos(null); }}
               className={cn("flex items-center gap-2 w-full px-3 py-2 text-xs transition-colors hover:bg-white/5",
                 !isLocked ? "text-cyan-400 font-bold" : "text-foreground/70")}
             >
-              <Unlock className="w-3.5 h-3.5" /> {i18n.t("playbook:everyoneCanSee")}
+              <Unlock className="w-3.5 h-3.5" /> {t("playbook:everyoneCanSee")}
             </button>
             {coachTeams.map(team => (
               <button
@@ -662,19 +661,19 @@ export default function PlaybookEditor() {
               </button>
             ))}
             {coachTeams.length === 0 && (
-              <p className="px-3 py-2 text-[10px] text-muted-foreground italic">{i18n.t("playbook:noTeamsCreated")}</p>
+              <p className="px-3 py-2 text-[10px] text-muted-foreground italic">{t("playbook:noTeamsCreated")}</p>
             )}
           </div>
         );
       })()}
       <div className="w-48 shrink-0 flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-mono uppercase text-cyan-400 tracking-widest">{i18n.t("playbook:title")}</span>
+          <span className="text-xs font-mono uppercase text-cyan-400 tracking-widest">{t("playbook:title")}</span>
           <div className="flex items-center gap-1">
-            <button onClick={() => { setShowNewFolder(true); setNewFolderName(''); }} className="text-cyan-400/60 hover:text-cyan-300" title={i18n.t("playbook:newFolder")} data-testid="button-new-folder">
+            <button onClick={() => { setShowNewFolder(true); setNewFolderName(''); }} className="text-cyan-400/60 hover:text-cyan-300" title={t("playbook:newFolder")} data-testid="button-new-folder">
               <FolderPlus className="w-4 h-4" />
             </button>
-            <button onClick={newPlay} className="text-cyan-400 hover:text-cyan-300" title={i18n.t("playbook:newPlay")} data-testid="button-new-play">
+            <button onClick={newPlay} className="text-cyan-400 hover:text-cyan-300" title={t("playbook:newPlay")} data-testid="button-new-play">
               <FilePlus className="w-4 h-4" />
             </button>
           </div>
@@ -684,7 +683,7 @@ export default function PlaybookEditor() {
             <Input
               value={newFolderName}
               onChange={e => setNewFolderName(e.target.value)}
-              placeholder={i18n.t("playbook:folderNamePlaceholder")}
+              placeholder={t("playbook:folderNamePlaceholder")}
               className="flex-1 bg-black/30 border-cyan-500/20 h-7 text-xs"
               autoFocus
               onKeyDown={e => {
@@ -704,7 +703,7 @@ export default function PlaybookEditor() {
         )}
         <div className="space-y-0.5 max-h-[420px] overflow-y-auto pr-1">
           {plays.length === 0 && (
-            <p className="text-xs text-muted-foreground/50 text-center py-6">{i18n.t("playbook:noSavedPlays")}</p>
+            <p className="text-xs text-muted-foreground/50 text-center py-6">{t("playbook:noSavedPlays")}</p>
           )}
           {(() => {
             const folders: Record<string, SavedPlay[]> = {};
@@ -729,7 +728,7 @@ export default function PlaybookEditor() {
                     >
                       <ChevronRight className={cn("w-3 h-3 shrink-0 transition-transform", openFolder === folder && "rotate-90")} />
                       <FolderOpen className="w-3 h-3 shrink-0" />
-                      <span className="flex-1 text-left truncate">{folder === 'Általános' ? i18n.t("playbook:generalFolder") : folder}</span>
+                      <span className="flex-1 text-left truncate">{folder === 'Általános' ? t("playbook:generalFolder") : folder}</span>
                       <span className="text-[10px] text-cyan-400/30">{folderPlays.length}</span>
                     </button>
                     {/* Lock/team button */}
@@ -746,7 +745,7 @@ export default function PlaybookEditor() {
                             setFolderMenuOpen(folder);
                           }
                         }}
-                        title={isLocked ? `${i18n.t("playbook:locked")} ${assignedTeam?.name ?? '?'}` : i18n.t("playbook:everyoneCanSee")}
+                        title={isLocked ? `${t("playbook:locked")} ${assignedTeam?.name ?? '?'}` : t("playbook:everyoneCanSee")}
                         className={cn("p-0.5 rounded transition-colors",
                           isLocked ? "text-amber-400 hover:text-amber-300" : "text-cyan-400/20 hover:text-cyan-400/60")}
                         data-testid={`button-folder-lock-${folder}`}
@@ -839,7 +838,7 @@ export default function PlaybookEditor() {
               className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-bold transition-all",
                 tool === 'select' ? "bg-cyan-500 text-black" : "text-cyan-400/60 hover:text-cyan-300 hover:bg-white/5")}
             >
-              <MousePointer className="w-3 h-3" /> {i18n.t("playbook:moveTool")}
+              <MousePointer className="w-3 h-3" /> {t("playbook:moveTool")}
             </button>
             <button
               onClick={() => { setTool('route'); setRoutePts(null); setShowRouteMenu(null); }}
@@ -847,7 +846,7 @@ export default function PlaybookEditor() {
               className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-bold transition-all",
                 tool === 'route' ? "bg-cyan-500 text-black" : "text-cyan-400/60 hover:text-cyan-300 hover:bg-white/5")}
             >
-              <Pen className="w-3 h-3" /> {i18n.t("playbook:routeTool")}
+              <Pen className="w-3 h-3" /> {t("playbook:routeTool")}
             </button>
             {playMode === 'defense' && (
               <button
@@ -856,7 +855,7 @@ export default function PlaybookEditor() {
                 className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-bold transition-all",
                   tool === 'zone' ? "bg-red-500 text-white" : "text-red-400/60 hover:text-red-300 hover:bg-white/5")}
               >
-                <Shield className="w-3 h-3" /> {i18n.t("playbook:zoneTool")}
+                <Shield className="w-3 h-3" /> {t("playbook:zoneTool")}
               </button>
             )}
           </div>
@@ -864,8 +863,8 @@ export default function PlaybookEditor() {
             <>
               <div className="w-px h-4 bg-cyan-500/20" />
               <div className="flex items-center gap-1 bg-black/40 rounded border border-red-500/20 p-0.5">
-                <span className="text-[9px] text-red-400/50 px-1">{i18n.t("playbook:shapeLabel")}</span>
-                {([['ellipse', Circle, i18n.t("playbook:ellipse")], ['rect', Square, i18n.t("playbook:rectangle")], ['freehand', Spline, i18n.t("playbook:freehand")]] as [ZoneShape, React.FC<{className?: string}>, string][]).map(([shape, Icon, label]) => (
+                <span className="text-[9px] text-red-400/50 px-1">{t("playbook:shapeLabel")}</span>
+                {([['ellipse', Circle, t("playbook:ellipse")], ['rect', Square, t("playbook:rectangle")], ['freehand', Spline, t("playbook:freehand")]] as [ZoneShape, React.FC<{className?: string}>, string][]).map(([shape, Icon, label]) => (
                   <button key={shape} onClick={() => setZoneTool(shape)}
                     data-testid={`button-zone-shape-${shape}`}
                     className={cn("flex items-center gap-1 px-1.5 py-0.5 text-[9px] rounded transition-colors",
@@ -878,7 +877,7 @@ export default function PlaybookEditor() {
                 <button onClick={deleteSelectedZone}
                   data-testid="button-delete-zone"
                   className="flex items-center gap-1 px-2 py-1 rounded text-xs font-bold text-red-400 hover:text-red-300 hover:bg-red-400/10 border border-red-400/30 transition-colors">
-                  <Trash2 className="w-3 h-3" /> {i18n.t("playbook:deleteZone")}
+                  <Trash2 className="w-3 h-3" /> {t("playbook:deleteZone")}
                 </button>
               )}
             </>
@@ -887,7 +886,7 @@ export default function PlaybookEditor() {
           <div className="w-px h-4 bg-cyan-500/20" />
 
           <div className="flex items-center gap-1 flex-wrap">
-            <span className="text-[10px] text-cyan-400/50 uppercase tracking-widest">{i18n.t("playbook:addPlayer")}</span>
+            <span className="text-[10px] text-cyan-400/50 uppercase tracking-widest">{t("playbook:addPlayer")}</span>
             {(playMode === 'offense' ? OFF_SKILL_TYPES : DEF_ADD_TYPES).map(t => (
               <button
                 key={t}
@@ -904,7 +903,7 @@ export default function PlaybookEditor() {
           <div className="w-px h-4 bg-cyan-500/20" />
 
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-cyan-400/50 uppercase">{i18n.t("playbook:losLabel")}</span>
+            <span className="text-[10px] text-cyan-400/50 uppercase">{t("playbook:losLabel")}</span>
             <select
               value={losY}
               onChange={e => {
@@ -942,7 +941,7 @@ export default function PlaybookEditor() {
                 className="flex items-center gap-1 px-2 py-1 rounded text-xs font-bold text-cyan-400 hover:bg-cyan-400/10 border border-cyan-500/20"
               >
                 <MessageSquare className="w-3 h-3" />
-                {play.playerNotes?.[selectedId] ? i18n.t("playbook:editNote") : i18n.t("playbook:addNote")}
+                {play.playerNotes?.[selectedId] ? t("playbook:editNote") : t("playbook:addNote")}
               </button>
               <button
                 onClick={removeSelected}
@@ -950,7 +949,7 @@ export default function PlaybookEditor() {
                 className="flex items-center gap-1 px-2 py-1 rounded text-xs font-bold text-red-400 hover:bg-red-400/10 border border-red-400/20"
               >
                 <Trash2 className="w-3 h-3" />
-                {play.routes.some(r => r.playerId === selectedId) ? i18n.t("playbook:deleteRoute") : i18n.t("playbook:deletePlayer")}
+                {play.routes.some(r => r.playerId === selectedId) ? t("playbook:deleteRoute") : t("playbook:deletePlayer")}
               </button>
             </div>
           )}
@@ -974,7 +973,7 @@ export default function PlaybookEditor() {
                 <g>
                   <rect x={0} y={ezY - 2} width={W} height={20} fill="#22d3ee08" />
                   <text x={W / 2} y={ezY + 10} fill="#22d3ee" fontSize={10} fontFamily="monospace" textAnchor="middle" opacity={0.3} fontWeight="bold">
-                    {i18n.t("playbook:ownEndzone")}
+                    {t("playbook:ownEndzone")}
                   </text>
                 </g>
               );
@@ -1192,7 +1191,7 @@ export default function PlaybookEditor() {
                   style={{ borderColor: cfg.color + '60' }}>
                   <div className="flex items-center gap-1 mb-0.5">
                     <span className="text-[9px] font-bold font-mono" style={{ color: cfg.color }}>{cfg.label}</span>
-                    <span className="text-[9px] text-white/40">{i18n.t("playbook:note")}</span>
+                    <span className="text-[9px] text-white/40">{t("playbook:note")}</span>
                   </div>
                   <p className="text-[10px] text-white/80 whitespace-pre-wrap leading-tight">
                     {play.playerNotes![hoveredPlayer]}
@@ -1206,20 +1205,20 @@ export default function PlaybookEditor() {
             <div className="absolute top-2 right-2 flex items-center gap-2">
               {isDrawingZone ? (
                 <div className="px-2 py-1 bg-red-500/20 text-red-300 text-[10px] rounded border border-red-500/30 font-bold">
-                  {zoneTool === 'freehand' ? i18n.t("playbook:drawingHint") : i18n.t("playbook:dragZoneHint")}
+                  {zoneTool === 'freehand' ? t("playbook:drawingHint") : t("playbook:dragZoneHint")}
                 </div>
               ) : selectedId ? (
                 <div className="px-2 py-1 bg-black/80 text-red-400/70 text-[10px] rounded border border-red-500/20">
-                  {i18n.t("playbook:zoneDrawHint", { shape: zoneTool === 'ellipse' ? i18n.t("playbook:ellipse") : zoneTool === 'rect' ? i18n.t("playbook:rectangle") : i18n.t("playbook:freehand") })}
+                  {t("playbook:zoneDrawHint", { shape: zoneTool === 'ellipse' ? t("playbook:ellipse") : zoneTool === 'rect' ? t("playbook:rectangle") : t("playbook:freehand") })}
                 </div>
               ) : (
                 <div className="px-2 py-1 bg-black/80 text-red-400/50 text-[10px] rounded border border-red-500/20">
-                  {i18n.t("playbook:selectPlayerFirst")}
+                  {t("playbook:selectPlayerFirst")}
                 </div>
               )}
               <button onClick={() => { setTool('select'); setIsDrawingZone(false); setZonePreview(null); setZoneDrawStart(null); }}
                 className="flex items-center gap-1 px-2 py-1 bg-black/80 text-red-400 text-xs font-bold rounded border border-red-400/30">
-                <X className="w-3 h-3" /> {i18n.t("common:cancel")}
+                <X className="w-3 h-3" /> {t("common:cancel")}
               </button>
             </div>
           )}
@@ -1229,28 +1228,28 @@ export default function PlaybookEditor() {
               <div className="flex items-center gap-2">
                 {isDrawing && willStraighten ? (
                   <div className="px-2 py-1 bg-cyan-500/20 text-cyan-300 text-[10px] rounded border border-cyan-500/30 font-bold">
-                    {i18n.t("playbook:straighteningActive")}
+                    {t("playbook:straighteningActive")}
                   </div>
                 ) : isDrawing ? (
                   <div className="px-2 py-1 bg-black/80 text-cyan-400/60 text-[10px] rounded border border-cyan-500/20">
-                    {i18n.t("playbook:drawingRouteHint")}
+                    {t("playbook:drawingRouteHint")}
                   </div>
                 ) : (
                   <div className="px-2 py-1 bg-black/80 text-cyan-400/60 text-[10px] rounded border border-cyan-500/20">
-                    {i18n.t("playbook:dragRouteHint")}
+                    {t("playbook:dragRouteHint")}
                   </div>
                 )}
                 {!isDrawing && (
                   <button onClick={() => { setTool('select'); setRoutePts(null); clearHoldTimer(); }}
                     className="flex items-center gap-1 px-2 py-1 bg-black/80 text-red-400 text-xs font-bold rounded border border-red-400/30">
-                    <X className="w-3 h-3" /> {i18n.t("common:cancel")}
+                    <X className="w-3 h-3" /> {t("common:cancel")}
                   </button>
                 )}
               </div>
               {!isDrawing && (
                 <div className="flex items-center gap-1 bg-black/80 rounded border border-cyan-500/20 p-0.5">
-                  <span className="text-[9px] text-cyan-400/50 px-1">{i18n.t("playbook:lineLabel")}</span>
-                  {([['solid', i18n.t("playbook:solid")], ['dashed', i18n.t("playbook:dashed")], ['dotted', i18n.t("playbook:dotted")]] as [RouteLineStyle, string][]).map(([style, label]) => (
+                  <span className="text-[9px] text-cyan-400/50 px-1">{t("playbook:lineLabel")}</span>
+                  {([['solid', t("playbook:solid")], ['dashed', t("playbook:dashed")], ['dotted', t("playbook:dotted")]] as [RouteLineStyle, string][]).map(([style, label]) => (
                     <button key={style} onClick={() => setRouteLineStyle(style)}
                       data-testid={`button-line-${style}`}
                       className={cn(
@@ -1272,21 +1271,21 @@ export default function PlaybookEditor() {
               )}
               {!isDrawing && (
                 <div className="flex items-center gap-1 bg-black/80 rounded border border-cyan-500/20 p-0.5">
-                  <span className="text-[9px] text-cyan-400/50 px-1">{i18n.t("playbook:endLabel")}</span>
+                  <span className="text-[9px] text-cyan-400/50 px-1">{t("playbook:endLabel")}</span>
                   {([
-                    ['arrow', i18n.t("playbook:arrow"), (
+                    ['arrow', t("playbook:arrow"), (
                       <svg width={20} height={10} className="inline-block">
                         <line x1={0} y1={5} x2={14} y2={5} stroke="currentColor" strokeWidth={2} />
                         <polygon points="20,5 12,2 12,8" fill="currentColor" />
                       </svg>
                     )],
-                    ['tee', i18n.t("playbook:tee"), (
+                    ['tee', t("playbook:tee"), (
                       <svg width={20} height={10} className="inline-block">
                         <line x1={0} y1={5} x2={16} y2={5} stroke="currentColor" strokeWidth={2} />
                         <line x1={16} y1={1} x2={16} y2={9} stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" />
                       </svg>
                     )],
-                    ['none', i18n.t("playbook:none"), (
+                    ['none', t("playbook:none"), (
                       <svg width={20} height={10} className="inline-block">
                         <line x1={0} y1={5} x2={18} y2={5} stroke="currentColor" strokeWidth={2} />
                       </svg>
@@ -1321,7 +1320,7 @@ export default function PlaybookEditor() {
               }}
             >
               <div className="px-3 py-1.5 border-b border-cyan-500/15">
-                <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest">{i18n.t("playbook:routeTree")}</span>
+                <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest">{t("playbook:routeTree")}</span>
               </div>
               {ROUTE_TREE.map(route => (
                 <button
@@ -1345,7 +1344,7 @@ export default function PlaybookEditor() {
                   <span className="w-5 h-5 rounded bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
                     <Pen className="w-3 h-3" />
                   </span>
-                  <span className="text-foreground/90">{i18n.t("playbook:customRoute")}</span>
+                  <span className="text-foreground/90">{t("playbook:customRoute")}</span>
                 </button>
                 {play.routes.some(r => r.playerId === selectedId) && (
                   <button
@@ -1356,7 +1355,7 @@ export default function PlaybookEditor() {
                     <span className="w-5 h-5 rounded bg-red-500/15 text-red-400 flex items-center justify-center shrink-0">
                       <Trash2 className="w-3 h-3" />
                     </span>
-                    {i18n.t("playbook:clearRoute")}
+                    {t("playbook:clearRoute")}
                   </button>
                 )}
               </div>
@@ -1369,8 +1368,8 @@ export default function PlaybookEditor() {
             return (
               <div className="absolute bottom-3 left-3 z-40 bg-black/85 border border-cyan-500/25 rounded-lg px-3 py-2 flex flex-col gap-1 min-w-[160px]">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-cyan-400/70 font-mono uppercase tracking-widest">{i18n.t("playbook:tempo")}</span>
-                  <span className="text-[11px] font-bold text-cyan-300">{speed === 1 ? i18n.t("playbook:tempoNormal") : speed < 1 ? i18n.t("playbook:tempoSlow") : i18n.t("playbook:tempoFast")} {speed}×</span>
+                  <span className="text-[10px] text-cyan-400/70 font-mono uppercase tracking-widest">{t("playbook:tempo")}</span>
+                  <span className="text-[11px] font-bold text-cyan-300">{speed === 1 ? t("playbook:tempoNormal") : speed < 1 ? t("playbook:tempoSlow") : t("playbook:tempoFast")} {speed}×</span>
                 </div>
                 <input
                   type="range"
@@ -1402,7 +1401,7 @@ export default function PlaybookEditor() {
                   ? "bg-black/40 border border-cyan-500/10 cursor-not-allowed opacity-30"
                   : "bg-cyan-500/90 border border-cyan-400 hover:bg-cyan-400 hover:scale-105 cursor-pointer"
             )}
-            title={i18n.t("playbook:playAnimationTitle")}
+            title={t("playbook:playAnimationTitle")}
           >
             {isAnimating ? (
               <div className="w-4 h-4 border-2 border-cyan-400/40 border-t-cyan-400 rounded-full animate-spin" />
@@ -1418,7 +1417,7 @@ export default function PlaybookEditor() {
             <Input
               value={playName}
               onChange={e => setPlayName(e.target.value)}
-              placeholder={i18n.t("playbook:playNamePlaceholder")}
+              placeholder={t("playbook:playNamePlaceholder")}
               className="flex-1 bg-black/30 border-cyan-500/20 focus:border-cyan-400 h-9 text-sm"
               onKeyDown={e => { if (e.key === 'Enter' && playName.trim()) saveMutation.mutate(); }}
               data-testid="input-play-name"
@@ -1430,7 +1429,7 @@ export default function PlaybookEditor() {
               data-testid="button-save-play"
             >
               <Save className="w-4 h-4 mr-1" />
-              {saveMutation.isPending ? i18n.t("common:saving") : editingId ? i18n.t("playbook:update") : i18n.t("playbook:save")}
+              {saveMutation.isPending ? t("common:saving") : editingId ? t("playbook:update") : t("playbook:save")}
             </Button>
           </div>
           <div className="flex gap-2 items-center">
@@ -1442,14 +1441,14 @@ export default function PlaybookEditor() {
               data-testid="select-play-folder"
             >
               {[...new Set([playFolder, ...plays.map(p => p.folder || 'Általános')])].sort().map(f => (
-                <option key={f} value={f} className="bg-black text-white">{f === 'Általános' ? i18n.t("playbook:generalFolder") : f}</option>
+                <option key={f} value={f} className="bg-black text-white">{f === 'Általános' ? t("playbook:generalFolder") : f}</option>
               ))}
             </select>
           </div>
           <textarea
             value={playNote}
             onChange={e => setPlayNote(e.target.value)}
-            placeholder={i18n.t("playbook:playNotePlaceholder")}
+            placeholder={t("playbook:playNotePlaceholder")}
             rows={2}
             className="w-full bg-black/30 border border-cyan-500/20 focus:border-cyan-400 rounded-md px-3 py-1.5 text-xs text-white/80 resize-none placeholder:text-white/20 focus:outline-none"
             data-testid="input-play-note"
@@ -1467,13 +1466,13 @@ export default function PlaybookEditor() {
                   <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{ background: cfg.color }}>
                     {cfg.label}
                   </div>
-                  <span className="text-sm font-bold text-white">{cfg.label} — {i18n.t("playbook:note")}</span>
+                  <span className="text-sm font-bold text-white">{cfg.label} — {t("playbook:note")}</span>
                 </div>
                 <textarea
                   autoFocus
                   value={playerNoteText}
                   onChange={e => setPlayerNoteText(e.target.value)}
-                  placeholder={i18n.t("playbook:playerNotePlaceholder")}
+                  placeholder={t("playbook:playerNotePlaceholder")}
                   rows={3}
                   className="w-full bg-black/50 border border-cyan-500/20 focus:border-cyan-400 rounded-md px-3 py-2 text-xs text-white/90 resize-none placeholder:text-white/20 focus:outline-none mb-3"
                   data-testid="input-player-note"
@@ -1481,11 +1480,11 @@ export default function PlaybookEditor() {
                 <div className="flex gap-2 justify-end">
                   <button onClick={() => setEditingPlayerNote(null)}
                     className="px-3 py-1 text-xs text-white/50 hover:text-white/80 rounded border border-white/10">
-                    {i18n.t("common:cancel")}
+                    {t("common:cancel")}
                   </button>
                   <button onClick={savePlayerNote} data-testid="button-save-player-note"
                     className="px-3 py-1 text-xs font-bold rounded text-black" style={{ background: cfg.color }}>
-                    {i18n.t("common:save")}
+                    {t("common:save")}
                   </button>
                 </div>
               </div>

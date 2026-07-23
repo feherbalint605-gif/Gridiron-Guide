@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import i18n from "@/i18n";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { usePositions } from "@/hooks/use-positions";
@@ -105,55 +104,6 @@ function PositionSelector({ onSelect }: { onSelect: (id: string) => void }) {
   );
 }
 
-const dashboardCards = [
-  {
-    id: "training",
-    title: i18n.t("dashboard:trainingPlan"),
-    subtitle: i18n.t("dashboard:trainingPlanSubtitle"),
-    icon: Dumbbell,
-    href: (posId: string) => `/position/${posId}`,
-    accent: "from-primary/20 to-primary/5",
-    border: "border-primary/30 hover:border-primary/60",
-    iconColor: "text-primary",
-    badge: i18n.t("dashboard:planBadge"),
-  },
-  {
-    id: "playbook",
-    title: i18n.t("dashboard:playbook"),
-    subtitle: i18n.t("dashboard:playbookSubtitle"),
-    icon: BookOpen,
-    href: () => "/playbook",
-    accent: "from-cyan-500/20 to-cyan-500/5",
-    border: "border-cyan-500/30 hover:border-cyan-500/60",
-    iconColor: "text-cyan-400",
-    badge: i18n.t("dashboard:tacticsBadge"),
-  },
-  {
-    id: "film",
-    title: i18n.t("dashboard:film"),
-    subtitle: i18n.t("dashboard:filmSubtitle"),
-    icon: Video,
-    href: () => "/film",
-    accent: "from-purple-500/20 to-purple-500/5",
-    border: "border-purple-500/30 hover:border-purple-500/60",
-    iconColor: "text-purple-400",
-    badge: i18n.t("dashboard:comingSoon"),
-    disabled: true,
-  },
-  {
-    id: "study",
-    title: i18n.t("dashboard:study"),
-    subtitle: i18n.t("dashboard:studySubtitle"),
-    icon: GraduationCap,
-    href: () => "/study",
-    accent: "from-amber-500/20 to-amber-500/5",
-    border: "border-amber-500/30 hover:border-amber-500/60",
-    iconColor: "text-amber-400",
-    badge: i18n.t("dashboard:comingSoon"),
-    disabled: true,
-  },
-];
-
 interface MyTeam {
   id: number;
   name: string;
@@ -174,6 +124,55 @@ function AthleteDashboard({
     retry: false,
   });
   const Icon = positionIcons[positionId] || Trophy;
+
+  const dashboardCards = [
+    {
+      id: "training",
+      title: t("dashboard:trainingPlan"),
+      subtitle: t("dashboard:trainingPlanSubtitle"),
+      icon: Dumbbell,
+      href: (posId: string) => `/position/${posId}`,
+      accent: "from-primary/20 to-primary/5",
+      border: "border-primary/30 hover:border-primary/60",
+      iconColor: "text-primary",
+      badge: t("dashboard:planBadge"),
+    },
+    {
+      id: "playbook",
+      title: t("dashboard:playbook"),
+      subtitle: t("dashboard:playbookSubtitle"),
+      icon: BookOpen,
+      href: () => "/playbook",
+      accent: "from-cyan-500/20 to-cyan-500/5",
+      border: "border-cyan-500/30 hover:border-cyan-500/60",
+      iconColor: "text-cyan-400",
+      badge: t("dashboard:tacticsBadge"),
+    },
+    {
+      id: "film",
+      title: t("dashboard:film"),
+      subtitle: t("dashboard:filmSubtitle"),
+      icon: Video,
+      href: () => "/film",
+      accent: "from-purple-500/20 to-purple-500/5",
+      border: "border-purple-500/30 hover:border-purple-500/60",
+      iconColor: "text-purple-400",
+      badge: t("dashboard:comingSoon"),
+      disabled: true,
+    },
+    {
+      id: "study",
+      title: t("dashboard:study"),
+      subtitle: t("dashboard:studySubtitle"),
+      icon: GraduationCap,
+      href: () => "/study",
+      accent: "from-amber-500/20 to-amber-500/5",
+      border: "border-amber-500/30 hover:border-amber-500/60",
+      iconColor: "text-amber-400",
+      badge: t("dashboard:comingSoon"),
+      disabled: true,
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-20">
