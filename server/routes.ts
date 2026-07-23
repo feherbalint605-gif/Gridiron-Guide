@@ -75,6 +75,23 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+  // Set user's weight unit preference (kg/lbs) — used by both athletes and coaches
+  app.post("/api/user/weight-unit", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const user = req.user as any;
+    const userId = user.id || user.claims?.sub;
+    if (!userId) return res.sendStatus(401);
+    const { weightUnit } = req.body;
+    if (!["lbs", "kg"].includes(weightUnit)) {
+      return res.status(400).json({ message: "Invalid weight unit" });
+    }
+    const [updated] = await db.update(users)
+      .set({ weightUnit })
+      .where(eq(users.id, userId))
+      .returning();
+    res.json(updated);
+  });
+
   // Athlete joins a coach (by coachId or email)
   app.post("/api/user/join-coach", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
