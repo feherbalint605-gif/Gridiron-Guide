@@ -25,6 +25,7 @@ export const users = pgTable("users", {
   role: varchar("role").default("athlete"),
   coachId: varchar("coach_id"),
   selectedPositionId: varchar("selected_position_id"),
+  weightUnit: varchar("weight_unit").default("lbs"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
