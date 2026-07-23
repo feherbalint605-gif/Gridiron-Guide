@@ -11,6 +11,7 @@ const PUBLIC_COLUMNS = {
   role: users.role,
   coachId: users.coachId,
   selectedPositionId: users.selectedPositionId,
+  weightUnit: users.weightUnit,
   createdAt: users.createdAt,
   updatedAt: users.updatedAt,
 };
