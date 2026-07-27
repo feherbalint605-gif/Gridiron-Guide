@@ -3,6 +3,7 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { setupAuth, registerAuthRoutes } from "./auth";
+import { registerAdminAuthRoutes } from "./adminAuth";
 import { db } from "./db";
 import { users } from "@shared/models/auth";
 import { workoutLogs, athletePlanOverrides, coachComments, playbookPlays, teams, teamMembers, teamMessages, playbookFolderTeams } from "@shared/schema";
@@ -15,6 +16,7 @@ export async function registerRoutes(
   // Set up authentication first
   await setupAuth(app);
   registerAuthRoutes(app);
+  registerAdminAuthRoutes(app);
   
   app.get(api.positions.list.path, async (_req, res) => {
     const positions = await storage.getPositions();
