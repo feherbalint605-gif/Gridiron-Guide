@@ -133,3 +133,19 @@ export const playbookFolderTeams = pgTable("playbook_folder_teams", {
 }, (t) => [primaryKey({ columns: [t.coachId, t.folder] })]);
 
 export type PlaybookFolderTeam = typeof playbookFolderTeams.$inferSelect;
+
+// ── Admin belépés (rejtett, OTP-védett) ──
+export const adminLoginAttempts = pgTable("admin_login_attempts", {
+  id: text("id").primaryKey(),
+  codeHash: text("code_hash").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  used: boolean("used").default(false).notNull(),
+  attempts: integer("attempts").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const adminSessions = pgTable("admin_sessions", {
+  token: text("token").primaryKey(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
