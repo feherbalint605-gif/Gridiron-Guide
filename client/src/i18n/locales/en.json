@@ -113,7 +113,7 @@
     "sets": "Sets",
     "reps": "Reps",
     "setLabel": "SET {{n}}",
-    "lbsPlaceholder": "lbs",
+    "lbsPlaceholder": "weight",
     "repsPlaceholder": "reps",
     "exerciseNamePlaceholder": "Exercise name...",
     "coachCommentLabel": "Coach comment",
