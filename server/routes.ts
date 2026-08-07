@@ -384,7 +384,7 @@ export async function registerRoutes(
         userId: userId,
         week: parseInt(req.body.week),
         setIndex: parseInt(req.body.setIndex),
-        weight: parseInt(req.body.weight) || 0,
+        weight: parseFloat(req.body.weight) || 0,
         reps: parseInt(req.body.reps) || 0
       };
       
