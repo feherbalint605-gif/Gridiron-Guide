@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, jsonb, timestamp, unique, primaryKey, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, jsonb, timestamp, unique, primaryKey, varchar, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -22,7 +22,7 @@ export const workoutLogs = pgTable("workout_logs", {
   workoutTitle: text("workout_title").notNull(),
   exerciseName: text("exercise_name").notNull(),
   setIndex: integer("set_index").notNull(),
-  weight: integer("weight").notNull(), // in lbs
+  weight: real("weight").notNull(), // in lbs (decimális, hogy a kg-konverzió pontos maradjon)
   reps: integer("reps"), // actual reps performed
 });
 
